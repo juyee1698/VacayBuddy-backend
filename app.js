@@ -11,7 +11,7 @@ const multer = require('multer');
 const redis = require('redis');
 const passport = require('passport');
 const cookieSession = require('cookie-session');
-require('./passport');
+// require('./passport');
 const app = express();
 const session = require( 'express-session');
 
