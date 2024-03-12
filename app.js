@@ -73,32 +73,6 @@ app.use(bookingRoutes);
 app.use('/auth', authRoutes);
 app.use('/o2auth', o2authRoutes);
 
-// app.get("/failed", (req, res) => {
-//     res.send("Failed")
-// })
-// app.get("/success", (req, res) => {
-//     res.send(`Welcome ${req.user.email}`)
-// })
-
-// app.get('/google',
-//     passport.authenticate('google', {
-//             scope:
-//                 ['email', 'profile']
-//         }
-//     ));
-
-// app.get('/google/callback',
-//     passport.authenticate('google', {
-
-//         failureRedirect: '/failed',
-//     }),
-//     function (req, res) {
-//         console.log("okk")
-//         res.redirect('/success')
-
-//     }
-// );
-
 app.use((error, req, res, next) => {
     const status = error.statusCode || 500;
     const message = error.message;
