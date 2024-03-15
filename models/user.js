@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const { redisConnect } = require('../util/redis');
+const { strike } = require('../util/path');
 
 const Schema = mongoose.Schema;
 
@@ -41,5 +43,7 @@ const userSchema = new Schema({
 {   
     timestamps:true
 });
+
+
 
 module.exports=mongoose.model('User',userSchema);
