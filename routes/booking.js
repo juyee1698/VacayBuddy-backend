@@ -11,6 +11,7 @@ const router = express.Router();
 
 //router.get('/',bookingController);
 
+//Getting flight search information
 router.post('/flightSearch',
     [
         body('originLocation', 'Origin location should not be empty').trim().not().isEmpty(),
@@ -48,8 +49,12 @@ router.post('/flightSearch/selectFlight',
 
 //?from=from&to=to&journeyContinuationId=journeyContinuationId',isAuth, bookingController.selectFlight);
 
-router.post('/flightSearch/:journeyContinuationId', 
-    isAuth, 
-    bookingController.bookFlight);
+router.post('/flightBooking', isAuth, bookingController.bookFlight);
+
+router.post('/flightBooking/checkout', isAuth, bookingController.postFlightCheckout);
+
+router.post('/flightBooking/checkout/success',isAuth,bookingController.postBookingFlight);
+
+router.get('/flightBooking/checkout/cancel',isAuth,bookingController.bookFlight);
 
 module.exports = router; 

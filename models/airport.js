@@ -26,19 +26,12 @@ const airportSchema = new Schema({
         required:true
     },
     stateCode:{
-        type:String,
-        required:true
+        type:String
     },
     countryCode:{
         type:String,
         required:true
-    }
-    
-}, 
-{   
-    timestamps:true
+    }  
 });
-
-
 
 module.exports=mongoose.model('Airports', airportSchema);
