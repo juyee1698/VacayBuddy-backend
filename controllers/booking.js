@@ -23,6 +23,7 @@ var amadeus = new Amadeus({
     clientSecret: process.env.amadeus_api_secret
 });
 
+//Controller function to get flight search results and store it temporarily for future reference - when user selects a flight
 exports.getFlights = (req, res, next) => {
     //Get the flight search input parameters from request body 
     const originLocation = req.body.originLocation;
@@ -40,7 +41,7 @@ exports.getFlights = (req, res, next) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         const error = new Error('Server Validation failed.');
-        error.errorCode = "server_validation_err";
+        error.errorCode = "client_err";
         error.statusCode = 422;
         error.data = errors.array();
         throw error;
@@ -113,6 +114,7 @@ exports.getFlights = (req, res, next) => {
                                 };
                             })
                             .catch(err => {
+                                err.message = "Error retrieving airport metadata from API";
                                 err.errorCode = "api_response_err";
                                 return next(err); 
                             });
@@ -120,8 +122,9 @@ exports.getFlights = (req, res, next) => {
                         
                     })
                     .catch(err => {
-                        err.errorCode = "database_err";
-                        throw err;
+                        err.message = "Error processing airport information in database";
+                        err.errorCode = "database_read_err";
+                        return next(err);
                     })
                     
                 );
@@ -204,7 +207,7 @@ exports.getFlights = (req, res, next) => {
                 path: err.description[0].source.pointer,
                 example: err.description[0].source.example
             }
-            throw error;
+            return next(error);
         }
     }
 
@@ -226,8 +229,9 @@ exports.getFlights = (req, res, next) => {
             return true;
         } catch (error) {
             console.error('Error storing flight results in Redis:', error);
-            error.errorCode = 'redis_err'
-            throw error;
+            error.message = 'Error storing flight results in Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
         }
     }
 
@@ -239,23 +243,36 @@ exports.getFlights = (req, res, next) => {
                 message: 'Flight results retrieved successfully!',
                 ...flights
             });
-        } catch (err) {
-            return next(err);
+        } catch (error) {
+            error.message = 'Error retrieving flight search results';
+            error.errorCode = 'internal_server_err';
+            return next(error);
         }
     })();
     
 };
 
+//Controller function to display flight booking information of the user selected flight and store it temporarily for future reference incase user decides to book this flight
 exports.selectFlight = (req, res, next) => {
     const flightId = req.query.flightId;
     const userId = req.userId;
+
+    //Handle server validation errors
+    const errors = validationResult(req);
+    if(!errors.isEmpty()) {
+        const error = new Error('Server Validation failed.');
+        error.errorCode = "client_err";
+        error.statusCode = 422;
+        error.data = errors.array();
+        throw error;
+    }
 
     //Function to retrieve that flight result from Redis
     async function retrieveFlightsResult() {
         try {
             const client = await redisConnect;
             let now = Date.now();
-            let today = now - (now % 86400000)
+            let today = now - (now % 86400000);
             const key = 'flightresults_' + userId + '_' + today;
             //Get the most recent key from redis
             // client.keys(key_prefix, (err, key) => {
@@ -268,21 +285,29 @@ exports.selectFlight = (req, res, next) => {
             //         throw error;
             //     }
             // });
-
             const flightSearchResultStr = await client.get(key);
 
-            const flightSearchResult = await JSON.parse(flightSearchResultStr);
+            //Check if flight search result has expired in Redis
+            if(flightSearchResultStr === undefined || flightSearchResultStr == null) {
+                error = new Error('Sorry! Your search result has expired.');
+                error.errorCode = 'search_result_expiry';
+                return next(error);
+            }
 
+            //Parse flight search results in JSON format
+            const flightSearchResult = await JSON.parse(flightSearchResultStr);
 
             return flightSearchResult;
 
-        } catch (err) {
-            console.error('Error retrieving flight result in Redis:', err);
-            //throw error;
-            return next(err);
+        } catch (error) {
+            console.error('Error retrieving flight search results from Redis:', error);
+            error.message = 'Error retrieving flight search results from Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
         }
     }
 
+    //Function to get detailed flight information of the flight that the user selected
     async function getFlightBookingInfo(flightSearchResult, flightId) {
         try {
             const flightsResult = flightSearchResult.flightsResult;
@@ -290,12 +315,14 @@ exports.selectFlight = (req, res, next) => {
             return flightInfo;
 
         } catch (error) {
-            console.error('Error processing flight info from Redis:', error);
-            throw error;
+            console.error('Error processing flight information in Redis:', error);
+            error.message = 'Error processing flight search information in Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
         }
     }
 
-    //Function to temporarily store flight selection info in Redis and create journey continuation ID for frontend
+    //Function to temporarily store detailed flight indo in Redis and create journey continuation ID for frontend
     async function storeFlightBookingInfo(flightBookingInfo, flightId) {
         try {
             let now = Date.now();
@@ -314,14 +341,19 @@ exports.selectFlight = (req, res, next) => {
 
         } catch (error) {
             console.error('Error storing flight booking information in Redis:', error);
-            throw error;
+            error.message = 'Error processing flight search information in Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
         }
     }
 
+    //Immediately invoked function expressions - to run all the functions above in a modular way
     (async () => {
         try {
+            //Get the flight search results of the search performed by user on that day
             const flightSearchResult = await retrieveFlightsResult();
 
+            //Get booking information of the flight that the user selected
             const flightInfo = await getFlightBookingInfo(flightSearchResult, flightId);
 
             const flightBookingInfo = {
@@ -333,8 +365,8 @@ exports.selectFlight = (req, res, next) => {
                 airportMetadata: flightSearchResult.airportMetadata
             };
 
+            //Store booking information in Redis for future reference and create a unique identifier for this search result
             const encryptedKey = await storeFlightBookingInfo(flightBookingInfo, flightId);
-
             const journeyContinuationId = encryptedKey.toString();
 
             res.status(201).json({
@@ -347,20 +379,33 @@ exports.selectFlight = (req, res, next) => {
                 
             });
 
-        } catch (err) {
-            return next(err);
+        } catch (error) {
+            error.message = 'Error retrieving flight search results';
+            error.errorCode = 'internal_server_err';
+            return next(error);
         }
     })();
 
 }
 
+//Controller function to get final flight booking information before user decides to checkout
 exports.bookFlight = (req, res, next) => {
     const journeyContinuationId = req.body.journeyContinuationId;
     const userId = req.userId;
 
+    const errors = validationResult(req);
+    if(!errors.isEmpty()) {
+        const error = new Error('Server Validation failed.');
+        error.errorCode = "client_err";
+        error.statusCode = 422;
+        error.data = errors.array();
+        throw error;
+    }
+
     let bytes;
     let decryptedKey;
 
+    //Function to get flight booking information key by decrypting journey continuation id
     async function getFlightKeyDetails(journeyContinuationId) {
         try {
             bytes = CryptoJS.AES.decrypt(journeyContinuationId, "VacayBuddy Flight Journey");
@@ -372,27 +417,40 @@ exports.bookFlight = (req, res, next) => {
                 key: decryptedKey
             };
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error decrypting the journey continuation ID';
+            error.errorCode = 'internal_server_err';
+            return next(error);
         }
     }
 
-
+    //Function to get flight booking information from Redis
     async function getFlightBookingInfo(flightInfoKey) {
         try {
             const client = await redisConnect;
 
             const flightBookingInfoStr = await client.get(flightInfoKey);
+
+            //Check if flight booking information result has expired in Redis
+            if(flightBookingInfoStr === undefined || flightBookingInfoStr == null) {
+                error = new Error('Sorry! Your search result has expired.');
+                error.errorCode = 'search_result_expiry';
+                return next(error);
+            }
+            //Parse it in JSON format
             const flightBookingInfo = await JSON.parse(flightBookingInfoStr);
 
             return flightBookingInfo;
 
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error retrieving flight booking information from Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
         }
     }
 
+    //Immediately invoked function expressions - to run all the functions above in a modular way
     (async () => {
         try {
             const flightKeyDetails = await getFlightKeyDetails(journeyContinuationId.toString());
@@ -414,20 +472,33 @@ exports.bookFlight = (req, res, next) => {
                 airportMetadata: flightBookingInfo.airportMetadata 
             });
 
-        } catch (err) {
-            return next(err);
+        } catch (error) {
+            error.message = 'Error retrieving flight booking information';
+            error.errorCode = 'internal_server_err';
+            return next(errpr);
         }
     })();
 }
 
+//Controller function to initiate flight booking checkout process
 exports.postFlightCheckout = (req, res, next) => {
     const journeyContinuationId = req.body.journeyContinuationId;
     const userId = req.userId;
     const userBookingInfo = req.body.userBookingInfo;
 
+    const errors = validationResult(req);
+    if(!errors.isEmpty()) {
+        const error = new Error('Server Validation failed.');
+        error.errorCode = "client_err";
+        error.statusCode = 422;
+        error.data = errors.array();
+        throw error;
+    }
+
     let bytes;
     let decryptedKey;
 
+    //Function to get flight booking information key by decrypting journey continuation id
     async function getFlightKeyDetails(journeyContinuationId) {
         try {
             bytes = CryptoJS.AES.decrypt(journeyContinuationId, "VacayBuddy Flight Journey");
@@ -440,30 +511,43 @@ exports.postFlightCheckout = (req, res, next) => {
                 key: decryptedKey
             };
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error decrypting the journey continuation ID';
+            error.errorCode = 'internal_server_err';
+            return next(error);
         }
         
     }
-
+    
+    //Function to get flight booking information from Redis
     async function getFlightBookingInfo(flightInfoKey) {
         try {
             const client = await redisConnect;
 
             const flightBookingInfoStr = await client.get(flightInfoKey);
+
+            //Check if flight booking information key has expired in Redis
+            if(flightBookingInfoStr === undefined || flightBookingInfoStr == null) {
+                error = new Error('Sorry! Your search result has expired.');
+                error.errorCode = 'search_result_expiry';
+                return next(error);
+            }
+            //Parse in JSON format
             const flightBookingInfo = await JSON.parse(flightBookingInfoStr);
 
             return flightBookingInfo;
 
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error retrieving flight booking information from Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
         }
     }
 
+    //Function to initiate payment checkout session using Stripe
     async function initiateCheckout(flightBookingInfo, userBookingInfo) {
         try {
-            //Initiate stripe checkout session
             const originCountryName = flightBookingInfo.airportMetadata.find(metadata => 
                 metadata.iataCode === flightBookingInfo.originLocation
             )?.countryName;
@@ -473,6 +557,8 @@ exports.postFlightCheckout = (req, res, next) => {
             )?.countryName;
 
             const today = new Date();
+
+            //Initiate stripe checkout session
             const session = await stripe.checkout.sessions.create({
                 payment_method_types:['card'],
                 client_reference_id: userId.toString(),
@@ -513,12 +599,14 @@ exports.postFlightCheckout = (req, res, next) => {
 
             return session;
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error in processing your payment. Please try again!';
+            error.errorCode = 'payments_err';
+            return next(error);
         }
     }
 
-    //Function to temporarily store flight selection info in Redis and create journey continuation ID for frontend
+    //Function to temporarily store user booking information in Redis and create user booking ID to track it post payment completion
     async function storeUserBookingInfo(userBookingInfo, userId, flightId) {
         try {
             console.log(userBookingInfo);
@@ -535,10 +623,13 @@ exports.postFlightCheckout = (req, res, next) => {
 
         } catch (error) {
             console.error('Error storing user booking information in Redis:', error);
-            throw error;
+            error.message = 'Error storing user booking information in Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
         }
     }
 
+    //Immediately invoked function expressions - to run all the functions above in a modular way
     (async () => {
         try {
             const flightKeyDetails = await getFlightKeyDetails(journeyContinuationId);
@@ -562,21 +653,34 @@ exports.postFlightCheckout = (req, res, next) => {
                 sessionUrl: session.url
             });
   
-        } catch (err) {
-            return next(err);
+        } catch (error) {
+            error.message = 'Error in creating flight booking session';
+            error.errorCode = 'internal_server_err';
+            return next(error);
         }
     })();
 
 };
 
+//Controller function to store booking information in database and generate booking invoice if payment is completed successfully
 exports.postBookingFlight = (req, res, next) => {
     const journeyContinuationId = req.body.journeyContinuationId;
     const userBookingId = req.body.userBookingId;
     const userId = req.userId;
 
+    const errors = validationResult(req);
+    if(!errors.isEmpty()) {
+        const error = new Error('Server Validation failed.');
+        error.errorCode = "client_err";
+        error.statusCode = 422;
+        error.data = errors.array();
+        throw error;
+    }
+
     let bytes;
     let decryptedKey;
 
+    //Function to get flight booking information key by decrypting journey continuation id
     async function getFlightKeyDetails(journeyContinuationId) {
         try {
             bytes = CryptoJS.AES.decrypt(journeyContinuationId, "VacayBuddy Flight Journey");
@@ -589,11 +693,14 @@ exports.postBookingFlight = (req, res, next) => {
                 key: decryptedKey
             };
         }
-        catch(err) {
-            return next(err);
+        catch(error) {
+            error.message = 'Error decrypting the journey continuation ID';
+            error.errorCode = 'internal_server_err';
+            return next(error);
         }
     }
 
+    //Function to get user booking information key by decrypting user booking id
     async function getUserKeyDetails(userBookingId) {
         try {
             bytes = CryptoJS.AES.decrypt(userBookingId, "VacayBuddy Flight Booking");
@@ -601,41 +708,66 @@ exports.postBookingFlight = (req, res, next) => {
 
             return decryptedKey;
         }
-        catch(err) {
-            return next(err);
+        catch(error) {
+            error.message = 'Error decrypting the user booking ID';
+            error.errorCode = 'internal_server_err';
+            return next(error);
         }
     }
 
+    //Function to get flight booking information from Redis
     async function getFlightBookingConfirmationInfo(flightInfoKey) {
         try {
             const client = await redisConnect;
 
             const flightBookingInfoStr = await client.get(flightInfoKey);
+
+            //Check if flight booking information key has expired in Redis
+            if(flightBookingInfoStr === undefined || flightBookingInfoStr == null) {
+                error = new Error('Sorry! Your search result has expired.');
+                error.errorCode = 'search_result_expiry';
+                return next(error);
+            }
+
             const flightBookingInfo = await JSON.parse(flightBookingInfoStr);
 
             return flightBookingInfo;
 
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error retrieving flight booking information from Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
         }
     }
 
+    //Function to get user booking checkout information from Redis
     async function getUserBookingConfirmationInfo(userBookingInfoKey) {
         try {
             const client = await redisConnect;
 
             const userBookingInfoStr = await client.get(userBookingInfoKey);
+
+            //Check if user booking information key has expired in Redis
+            if(userBookingInfoStr === undefined || userBookingInfoStr == null) {
+                error = new Error('Sorry! Your search result has expired.');
+                error.errorCode = 'search_result_expiry';
+                return next(error);
+            }
+
             const userBookingInfo = await JSON.parse(userBookingInfoStr);
 
             return userBookingInfo;
 
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error retrieving user booking details from Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
         }
     }
 
+    //Function to store the flight booking information of the user in flight bookings database
     async function storeFlightBookingConfirmationInfo(flightBookingInfo) {
         try {
             let destinationTravelSegments;
@@ -652,6 +784,7 @@ exports.postBookingFlight = (req, res, next) => {
                 };
             });
 
+            //Get return trip information when applicable
             if(flightBookingInfo.flightInfo.itineraries.length > 1) {
                 returnTravelSegments = flightBookingInfo.flightInfo.itineraries[1].segments.map(segment => {
                     return {
@@ -669,6 +802,7 @@ exports.postBookingFlight = (req, res, next) => {
                 returnTripDuration = null;
             }
             
+            //Create FlightBooking object to store detailed information
             const flightBooking = new FlightBooking({
                 airlineCarrierMetadata: JSON.stringify(flightBookingInfo.dictionaries.carriers),
                 airportMetadata: JSON.stringify(flightBookingInfo.airportMetadata),
@@ -699,11 +833,14 @@ exports.postBookingFlight = (req, res, next) => {
 
             return flightBooking._id;
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error in storing flight booking information in database';
+            error.errorCode = 'database_cud_err'
+            return next(error);
         }
     }
 
+    //Function to get payment information from stripe session
     async function getStripePaymentInfo(userBookingInfo) {
         try {    
             const sessionId = userBookingInfo.sessionId;  
@@ -713,11 +850,14 @@ exports.postBookingFlight = (req, res, next) => {
 
             return session;
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error in retrieving payment session information from Stripe.';
+            error.errorCode = 'payments_err';
+            return next(error);
         }
     }
 
+    //Function to store user's payment information in payments database
     async function saveUserPaymentDetails(flightBookingInfo, userBookingInfo, paymentSession) {
         try {
             const bookingType = await BookingType.findOne({type:'Flight'});
@@ -755,17 +895,20 @@ exports.postBookingFlight = (req, res, next) => {
             return payment._id;
 
            }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error in storing user payment information in database';
+            error.errorCode = 'database_cud_err'
+            return next(error);
         }
     }
 
-
+    //Function to store booking information in booking database that references flight reservation and payment information
     async function storeBooking(flightBookingId, paymentId, paymentSession) {
         const today = new Date();
         const bookingType = await BookingType.findOne({type:'Flight'});
         const bookingTypeId = bookingType._id;
         try {
+            //Create Booking Object
             const booking = new Booking({
                 userId: userId,
                 bookingDate: today,
@@ -779,11 +922,14 @@ exports.postBookingFlight = (req, res, next) => {
 
             return booking._id;
         }
-        catch (err) {
-            return next(err);
+        catch (error) {
+            error.message = 'Error in storing user booking information in database';
+            error.errorCode = 'database_cud_err'
+            return next(error);
         }
     }
 
+    //Immediately invoked function expression
     (async () => {
         try {
             const flightKeyDetails = await getFlightKeyDetails(journeyContinuationId);
@@ -810,8 +956,10 @@ exports.postBookingFlight = (req, res, next) => {
                 bookingId: bookingId
             });
             
-        } catch (err) {
-            return next(err);
+        } catch (error) {
+            error.message = 'Error in completing flight booking. Please try again later!';
+            error.errorCode = 'internal_server_err';
+            return next(error);
         }
     })();
 };
@@ -819,6 +967,4 @@ exports.postBookingFlight = (req, res, next) => {
 exports.getBookings;
 
 exports.getFlightFilterResults;
-
-//exports.get
 

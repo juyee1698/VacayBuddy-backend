@@ -59,7 +59,7 @@ app.use((error, req, res, next) => {
     const errorCode = error.errorCode;
     const message = error.message;
     const data = error.data;
-    res.status(status).json({ statusCode: status, message: message, data: data });
+    res.status(status).json({ statusCode: status, message: message, data: data, errorCode: errorCode });
 });
 
 // redisClient.connect()
