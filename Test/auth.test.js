@@ -46,19 +46,26 @@ describe('Auth Controller - auth.js', () => {
         json: jest.fn()
       };
       const next = jest.fn();
-
+  
+      // Ensure validationResult indicates no errors
       validationResult.mockImplementation(() => ({ isEmpty: () => true }));
+  
+      // Mock bcrypt.hash to resolve with a fake hashed password
       bcrypt.hash.mockResolvedValue('hashedPassword');
+  
+      // Mock User save operation to resolve successfully
       User.prototype.save.mockResolvedValue({
         _id: '123',
         email: 'john@example.com'
       });
-
+  
       await postSignup(req, res, next);
-
+  
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(expect.any(Object));
     });
+  });
+  
 
     it('Should handle validation errors for registration', async () => {
       const req = {
@@ -82,7 +89,6 @@ describe('Auth Controller - auth.js', () => {
       expect(next).toHaveBeenCalledWith(expect.any(Error));
       expect(next.mock.calls[0][0].statusCode).toBe(422);
     });
-  });
 
   describe('login', () => {
     it('Should authenticate a user with valid credentials', async () => {
