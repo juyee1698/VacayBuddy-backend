@@ -24,7 +24,9 @@ app.use(session({
 // Initialize Passport and restore authentication state if available
 app.use(passport.initialize());
 app.use(passport.session());
-
+app.get('/', (req, res) => {
+    res.send('Hello, World!');
+  });
 // app.use(cookieSession({
 //     name: 'google-auth-session',
 //     keys: ['key1', 'key2']
