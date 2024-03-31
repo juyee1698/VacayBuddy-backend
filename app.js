@@ -94,7 +94,7 @@ app.use((error, req, res, next) => {
 mongoose.connect(process.env.mongoose_connect)
 .then(result => {
     console.log('Connected');
-    app.listen(8080);
+    app.listen(process.env.PORT || 8080)
 })
 .catch(err => {
     console.log(err);
