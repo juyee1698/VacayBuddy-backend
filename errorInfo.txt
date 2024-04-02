@@ -4,6 +4,8 @@ internal_server_err - Internal error in a functionality
 
 api_response_err - When there is error in fetching information from API
 
+auth_err
+
 client_err - When its a bad request from client side (e.g., malformed request syntax, invalid request message framing, or deceptive request routing).
 
 redis_err - When its a bad request from Redis during CRUD

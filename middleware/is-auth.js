@@ -38,7 +38,9 @@ module.exports = (req, res, next) => {
             try {
                 decodedToken = jwt.verify(token, 'somesuperprojectsecret');
             } catch(err) {
-                err.statusCode = 500;
+                err.message = 'Not authenticated.';
+                err.statusCode = 401;
+                err.errorCode = "auth_err";
                 throw err;
             }
             if(!decodedToken) {
@@ -50,7 +52,7 @@ module.exports = (req, res, next) => {
             next();
 
         } catch (err) {
-            throw err;
+            return next(err);
         }
     }
     // redisConnect
@@ -74,8 +76,12 @@ module.exports = (req, res, next) => {
 
     //JSON.parse(blackListTokens);
     
-    handleAuthorization().catch(err => {
+    handleAuthorization().catch(error => {
         // Handle errors here
-        console.error(err);
+        console.error(error);
+        error.message = 'Not authenticated.';
+        error.statusCode = 401;
+        error.errorCode = "auth_err";
+        return next(error);
     });
 }

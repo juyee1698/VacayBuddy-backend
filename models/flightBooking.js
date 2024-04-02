@@ -21,16 +21,13 @@ const flightBookingSchema = new Schema({
             },
             departure: {
                 iataCode: {
-                    type:String,
-                    required:true
+                    type:String
                 },
                 terminal: {
-                    type:String,
-                    required:true
+                    type:String
                 },
                 at: {
-                    type:String,
-                    required:true
+                    type:String
                 }
             },
             arrival: {
@@ -39,12 +36,10 @@ const flightBookingSchema = new Schema({
                     required:true
                 },
                 terminal: {
-                    type:String,
-                    required:true
+                    type:String
                 },
                 at: {
-                    type:String,
-                    required:true
+                    type:String
                 }
             },
             carrierCode: {

@@ -33,6 +33,7 @@ const app = express();
 
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
+const searchRoutes = require('./routes/search');
 const authRoutes = require('./routes/auth');
 
 //app.use(bodyParser.urlencoded({extended: true}));
@@ -50,8 +51,9 @@ app.use((req, res, next) => {
 // app.use('/images',express.static(path.join(__dirname,'images')));
 
 app.use('/admin',adminRoutes);
-app.use(bookingRoutes);
 app.use('/auth', authRoutes);
+app.use(bookingRoutes);
+app.use(searchRoutes);
 
 
 app.use((error, req, res, next) => {
@@ -61,15 +63,6 @@ app.use((error, req, res, next) => {
     const data = error.data;
     res.status(status).json({ statusCode: status, message: message, data: data, errorCode: errorCode });
 });
-
-// redisClient.connect()
-// .then(result => {
-//     app.use(redisClient);
-//     console.log('Connected to redis');
-// })
-// .catch(err => {
-//     console.log(err);
-// });
 
 mongoose.connect(process.env.mongoose_connect)
 .then(result => {
