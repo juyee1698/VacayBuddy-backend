@@ -53,7 +53,7 @@ app.get('/', (req, res) => {
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
 const authRoutes = require('./routes/auth');
-const o2authRoutes = require('./routes/oauth2')
+const o2authRoutes = require('./routes/o2auth_google')
 
 
 //app.use(bodyParser.urlencoded({extended: true}));
