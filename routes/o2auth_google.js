@@ -35,7 +35,7 @@ router.post('/google', async (req, res) => {
         const token = jwt.sign({ userId: user._id }, "somesuperprojectsecret", { expiresIn: '1h' });
 
         // Send JWT token and user ID to the frontend
-        res.status(201).json({ token, userId: user._id });
+        res.status(201).json({ token, userId: name });
     } catch (error) {
         console.error('Error:', error);
         res.status(401).json({ message: 'Unauthorized' });
