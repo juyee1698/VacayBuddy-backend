@@ -31,10 +31,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
-// app.use(express.static(path.join(__dirname,'public')));
-// app.use('/images',express.static(path.join(__dirname,'images')));
-
 app.use('/admin',adminRoutes);
 app.use(bookingRoutes);
 app.use('/auth', authRoutes);
@@ -46,15 +42,6 @@ app.use((error, req, res, next) => {
     const data = error.data;
     res.status(status).json({ message: message, data: data });
 });
-
-// redisClient.connect()
-// .then(result => {
-//     app.use(redisClient);
-//     console.log('Connected to redis');
-// })
-// .catch(err => {
-//     console.log(err);
-// });
 
 mongoose.connect(process.env.mongoose_connect)
 .then(result => {
