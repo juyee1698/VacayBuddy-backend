@@ -11,8 +11,6 @@ const googleClient = new OAuth2Client('243962731858-rb04b0dbelevp5blhc339io995op
 router.post('/google', async (req, res) => {
     try {
         const { access_token } = req.body;
-        console.log("got here")
-        console.log(access_token)
         // Verify Google access token
         const ticket = await googleClient.verifyIdToken({
             idToken: access_token,
@@ -20,7 +18,6 @@ router.post('/google', async (req, res) => {
         });
 
         const payload = ticket.getPayload();
-        console.log("Ok I am here")
         const { sub, email, name, picture } = payload; // Extract user information
         console.log(email, name)
         let user = await User.findOne({ email });
