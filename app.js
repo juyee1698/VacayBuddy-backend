@@ -4,52 +4,17 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-//const MongoDBStore = require('connect-mongodb-session')(session);
 const csrf = require('csurf');
 const flash = require('connect-flash');
 const multer = require('multer');
 const redis = require('redis');
-const passport = require('passport');
-const cookieSession = require('cookie-session');
-// require('./passport');
 const app = express();
-const session = require( 'express-session');
-
-app.use(session({
-    secret: 'your_secret_key',
-    resave: false,
-    saveUninitialized: true
-}));
-
 // Initialize Passport and restore authentication state if available
-app.use(passport.initialize());
-app.use(passport.session());
+
 app.get('/', (req, res) => {
     res.send('Hello, World!');
   });
-// app.use(cookieSession({
-//     name: 'google-auth-session',
-//     keys: ['key1', 'key2']
-//   }))
-// const fileStorage = multer.diskStorage({
-//     destination: (req,file,cb) => {
-//         cb(null,'images')
-//     },
-//     filename: (req,file,cb) => {
-//         cb(null,new Date().getTime()+'-'+file.originalname)
-//     }
-// });
 
-// const fileFilter = (req,file,cb) => {
-//     if(file.mimetype==='image/png' || file.mimetype==='image/jpg' || file.mimetype==='image/jpeg') {
-//         cb(null,true);
-//     }
-//     else {
-//         cb(null,false);
-//     }
-// };
-// app.use(passport.initialize());
-// app.use(passport.session());
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
 const authRoutes = require('./routes/auth');

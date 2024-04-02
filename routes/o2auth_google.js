@@ -1,5 +1,4 @@
 const express = require('express');
-const passport = require('passport');
 const { OAuth2Client } = require('google-auth-library');
 const router = express.Router();
 const User = require('../models/user'); 
