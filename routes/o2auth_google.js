@@ -5,7 +5,7 @@ const User = require('../models/user');
 const jwt = require('jsonwebtoken');
 
 // Initialize Google OAuth client
-const googleClient = new OAuth2Client('243962731858-rb04b0dbelevp5blhc339io995opuhqu.apps.googleusercontent.com');
+const googleClient = new OAuth2Client(process.env.o2auth_client_id);
 
 // Google OAuth callback route
 router.post('/google', async (req, res) => {
@@ -14,7 +14,7 @@ router.post('/google', async (req, res) => {
         // Verify Google access token
         const ticket = await googleClient.verifyIdToken({
             idToken: access_token,
-            audience: "243962731858-rb04b0dbelevp5blhc339io995opuhqu.apps.googleusercontent.com",
+            audience: process.env.o2auth_client_id,
         });
 
         const payload = ticket.getPayload();
@@ -27,7 +27,13 @@ router.post('/google', async (req, res) => {
             user = await User.create({
                 name,
                 email,
-                password: "xxx"
+                password:'xxx',
+                imageUrl:'images/user/profile.jpg',
+                city:'',
+                country:'',
+                address:'',
+                phoneno:0,
+                postal:0
             });
         }
 
@@ -35,7 +41,7 @@ router.post('/google', async (req, res) => {
         const token = jwt.sign({ userId: user._id }, "somesuperprojectsecret", { expiresIn: '1h' });
 
         // Send JWT token and user ID to the frontend
-        res.status(201).json({ token, userId: name });
+        res.status(201).json({ token, userId: user._id , name });
     } catch (error) {
         console.error('Error:', error);
         res.status(401).json({ message: 'Unauthorized' });

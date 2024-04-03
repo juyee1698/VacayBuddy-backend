@@ -106,7 +106,8 @@ exports.login = (req, res, next) => {
         );
         res.status(200).json({
             token: token,
-            userId: loadedUser.name.toString()
+            userId: loadedUser._id.toString(),
+            name: loadedUser.name.toString()
         });
     })
     .catch(err => {
