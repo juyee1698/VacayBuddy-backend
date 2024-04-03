@@ -1,0 +1,19 @@
+Error controller codes
+
+internal_server_err - Internal error in a functionality
+
+api_response_err - When there is error in fetching information from API
+
+auth_err
+
+client_err - When its a bad request from client side (e.g., malformed request syntax, invalid request message framing, or deceptive request routing).
+
+redis_err - When its a bad request from Redis during CRUD
+
+database_read_err - When its a bad request from MongoDB during select operations
+
+database_cud_err - When its a bad request from MongoDB during Create, Update, Delete operations
+
+search_result_expiry - When redis key for flight/sightseeing search information has expired
+
+payments_err - When its a bad request from payment gateway (stripe)
