@@ -1,0 +1,22 @@
+name: Docker Image CI for GHCR # Name of the GitHub Actions workflow
+
+on: # Triggers for the workflow
+  push: # Triggers on any push to the repository
+
+jobs: # Jobs to be executed within the workflow
+  build_and_publish: # Name of the job
+    runs-on: ubuntu-latest # Operating system for the job
+
+    steps: # Steps to be executed within the job
+      - name: Checkout code # Step to checkout the repository code
+        uses: actions/checkout@v3 # Using the official action to checkout the code
+        
+      - name: Install dependencies # Step to install npm dependencies
+        run: npm ci # Using npm ci for clean installation of dependencies
+
+      - name: Run unit tests # Step to run unit tests
+        run: echo "npm test" # Placeholder command for running tests (replace with actual test command)
+      # - name: Build and Deploy
+      #   run:  docker login --username <user.name> --password ${{secrets.ACCESS_TOKEN}} ghcr.io
+      #       docker build -t ghcr.io/user.name/vacay-backend:latest --file Dockerfile .  
+      #       docker push ghcr.io/user.name/vacay-backend:latest 
