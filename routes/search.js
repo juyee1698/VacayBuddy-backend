@@ -60,5 +60,12 @@ router.post('/flightSearch/selectFlight',
     isAuth, 
     searchController.selectFlight);
 
+//Get airport metadata 
+router.post('/airportMetadata', searchController.getAirportMetadata);
+
+router.post('/sightSearch',
+    isAuth, 
+    searchController.getSightSeeingActivities);
+
 
 module.exports = router; 

@@ -410,4 +410,143 @@ exports.selectFlight = (req, res, next) => {
 
 }
 
+exports.getAirportMetadata = (req, res, next) => {
+
+    async function getAirportsData() {
+        try {
+            const airports = await Airport.find();
+            return airports;
+        }
+        catch(err) {
+            return next(err);
+        }
+    }
+
+
+    (async () => {
+        try {
+            const airportMetadata = await getAirportsData();
+
+            res.status(201).json({
+                message: 'Airports information retrieved successfully!',
+                airportMetadata: airportMetadata
+            });
+
+        } catch (error) {
+            error.message = 'Error retrieving airports information';
+            error.errorCode = 'internal_server_err';
+            return next(error);
+        }
+    })();
+}
+
+exports.getSightSeeingActivities = (req, res, next) => {
+    const city = req.body.city;
+    const state = req.body.state;
+    const countryCode = req.body.countryCode;
+    const iataCode = req.body.iataCode;
+    const type = req.body.type;
+    const radius = "10000";
+
+    //Handle server validation errors
+    const errors = validationResult(req);
+    if(!errors.isEmpty()) {
+        const error = new Error('Server Validation failed.');
+        error.errorCode = "client_err";
+        error.statusCode = 422;
+        error.data = errors.array();
+        throw error;
+    }
+
+    async function getCityGeographicDetails(city, countryCode) {
+        try {
+            
+            const existingCity = await City.findOne({iataCode: iataCode});
+
+            if(existingCity) {
+                return existingCity;
+            }
+            else {
+                const citiesResponse = await amadeus.referenceData.locations.cities.get({
+                    keyword: city,
+                    countryCode: countryCode
+                });
+
+                const locations = citiesResponse.data;
+
+                locations.forEach(location => {
+                    if (location.iataCode === iataCode) {
+                        const cityDetails = new City({
+                            iataCode:location.iataCode,
+                            name:location.name,
+                            countryCode:location.address.countryCode,
+                            cityCode:location.cityCode,
+                            stateCode:location.address.stateCode,
+                            geoCode: {
+                                latitude: location.geoCode.latitude,
+                                longitude: location.geoCode.longitude
+                            },
+                            type:location.type,
+                            subType:location.subType
+                        });
+                        cityDetails.save();
+
+                        return cityDetails;
+                    }
+                });
+            }
+
+        }
+        catch(error) {
+            error.message = "Error processing cities information in database";
+            error.errorCode = "database_read_err";
+            return next(error);
+        }
+    }
+
+    async function getSightsRecommendations(city, type, radius) {
+
+        try {
+            const latitude = city.geoCode.latitude.toString();
+            const longitude = city.geoCode.longitude.toString();
+
+            const location = latitude + " " + longitude;
+
+            const response = await axios.get(
+                `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location}&radius=${radius}&type=${type}&rankby=prominence&key=${places_nearbysearch_api}`
+                )
+
+            
+            console.log(response.data);
+        }
+        catch (err) {
+            return next(err);
+        }
+        
+    }
+
+    async function storeSightsRecommendations(city) {
+        
+    }
+
+    (async () => {
+        try {
+            const cityDetails = await getCityGeographicDetails(city, countryCode);
+
+            await getSightsRecommendations(cityDetails, type, radius);
+
+        } catch (error) {
+            // error.message = 'Error retrieving flight search results';
+            // error.errorCode = 'internal_server_err';
+            return next(error);
+        }
+    })();
+
+};
+
+exports.selectSightSeeingActivity = (req, res, next) => {
+    
+};
+
+
 
