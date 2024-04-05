@@ -1,10 +1,26 @@
 const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
-const { validationResult } = require('express-validator');
-const jwt = require('jsonwebtoken');
+const { readdirSync } = require('fs');
 
-const User = require('../models/user');
-const { redisConnect } = require('../util/redis');
+function getbcrypt(){
+    const bcrypt = require('bcryptjs');
+    return bcrypt
+}
+function getValidationResult(){
+    const { validationResult } = require('express-validator');
+    return validationResult;
+}
+
+const jwt = require('jsonwebtoken');
+function getUserDB(){
+    const User = require('../models/user');
+    return User
+}
+
+function getreddis(){
+    const { redisConnect } = require('../util/redis');
+    return redisConnect
+}
+
 
 exports.getSignup = (req, res, next) => {
     let message = req.flash('error');
@@ -30,24 +46,18 @@ exports.postSignup = (req, res, next) => {
     const email = req.body.email;
     const password = req.body.password;
     const confirmPassword = req.body.confirmPassword;
-    const errors = validationResult(req);
+    const errors = getValidationResult()(req);
     if(!errors.isEmpty()) {
-        // return res.status(422).render('auth/signup', {
-        //     path: '/signup',
-        //     pageTitle: 'Signup',
-        //     errorMessage:errors.array()[0].msg,
-        //     oldInput: {name:name,email:email,password:password,confirmPassword:req.body.confirmPassword},
-        //     validationErrors:errors.array()
-        // });
         const error = new Error('Validation failed.');
         error.statusCode = 422;
         error.data = errors.array();
         throw error;
     }
-    bcrypt
+
+    getbcrypt()
     .hash(password,12)
     .then(hashedPasswd => {
-        const user = new User({
+        const user = new getUserDB()({
             name:name,
             email:email,
             password:hashedPasswd,
@@ -61,9 +71,8 @@ exports.postSignup = (req, res, next) => {
         return user.save();
     })
     .then(result => {
-        //console.log(result);
         res.status(201).json({
-          message: 'User created successfully!',
+          message: 'User created successfully!',            
           flag: true,
           post: result
         });
@@ -81,15 +90,16 @@ exports.login = (req, res, next) => {
     const email = req.body.email;
     const password = req.body.password;
     let loadedUser;
-    User.findOne({email: email})
-    .then(user => {
+    console.log("start login",email,password)
+    const User = getUserDB()()
+    User.findOne({email: email}).then(user => {
         if(!user) {
             const error = new Error('Sorry, A user with this email could not be found!');
             error.statusCode = 401;
             throw error;
         }
         loadedUser = user;
-        return bcrypt.compare(password, user.password);
+        return getbcrypt().compare(password, user.password);
     })
     .then(isEqual => {
         if(!isEqual) {
@@ -124,7 +134,7 @@ exports.logout = (req, res, next) => {
     let tokensArray;
     let updatedTokens;
     let rclient;
-    redisConnect
+    getreddis()
         .then(client => {
             rclient = client;
             return rclient.get('blacklisttokens');

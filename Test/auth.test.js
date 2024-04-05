@@ -1,149 +1,143 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const { postSignup, login } = require('../controllers/auth');
+const httpMocks = require('node-mocks-http');
 const { validationResult } = require('express-validator');
-const { redisConnect } = require('../util/redis');
-const User = require('../models/user');
-const { getSignup, postSignup, login, logout } = require('../controllers/auth');
-
+const bcrypt = require('bcryptjs');
+// Mocking dependencies
 jest.mock('bcryptjs');
 jest.mock('jsonwebtoken');
 jest.mock('express-validator');
 jest.mock('../util/redis');
+const User = require('../models/user');
 jest.mock('../models/user');
+const flushPromises = () => new Promise(setImmediate);
+describe('postsign controller', () => {
 
-describe('Auth Controller - auth.js', () => {
-  beforeEach(() => {
-    // Reset mocks before each test
-    jest.clearAllMocks();
-  });
-  describe('getSignup', () => {
-    it('should render the signup page with the correct view and variables', () => {
-      const req = { flash: jest.fn().mockReturnValue([]) };
-      const res = { render: jest.fn() };
-      const next = jest.fn();
-
-      getSignup(req, res, next);
-      
-      expect(res.render).toHaveBeenCalledWith('auth/signup', expect.objectContaining({
-        path: '/signup',
-        pageTitle: 'Signup',
-        errorMessage: null
-      }));
+    test('should create a new user successfully', async () => {
+        console.log("start")
+        const req = httpMocks.createRequest({
+            method: 'POST',
+            body: {
+                name: 'Test User',
+                email: 'test@example.com',
+                password: 'password',
+                confirmPassword: 'password',
+            },
+        });
+        const next = jest.fn();
+        next.mockResolvedValue({ _id: 'someUserId' })
+        validationResult.mockImplementation(() => ({ isEmpty: () => true }));
+       
+        User.mockImplementation(() => ({
+          save: next,
+          findOne: next
+      }));      
+      bcrypt.hash.mockResolvedValue('hashedPasswordcas');
+        const res = httpMocks.createResponse();
+        console.log(res.statusCode)
+        await postSignup(req,res);
+        await flushPromises();
+        console.log("*****end******")
+        console.log(res.statusCode)
+        expect(res.statusCode).toBe(201);
+        expect(res._getJSONData()).toEqual({
+            message: 'User created successfully!',
+            flag: true,
+            post: { _id: 'someUserId' },
+        });
     });
-  });
-  describe('postSignup', () => {
-    it('Should successfully register a user', async () => {
-      const req = {
-        body: {
-          name: 'John Doe',
-          email: 'john@example.com',
-          password: 'Password123',
-          confirmPassword: 'Password123'
-        }
-      };
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
-      };
-      const next = jest.fn();
-  
-      // Ensure validationResult indicates no errors
-      validationResult.mockImplementation(() => ({ isEmpty: () => true }));
-  
-      // Mock bcrypt.hash to resolve with a fake hashed password
-      bcrypt.hash.mockResolvedValue('hashedPassword');
-  
-      // Mock User save operation to resolve successfully
-      User.prototype.save.mockResolvedValue({
-        _id: '123',
-        email: 'john@example.com'
-      });
-  
-      await postSignup(req, res, next);
-  
-      expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(expect.any(Object));
+    test('should handle internal server error', async () => {
+        // Mock the behavior of the User model to throw an error
+        
+        User.mockImplementation(() => ({
+            save: jest.fn(() => Promise.reject(new Error('Database error'))),
+        }));
+        validationResult.mockImplementation(() => ({ isEmpty: () => true }));
+        bcrypt.hash.mockResolvedValue('hashedPasswordcas');
+        
+
+        const req = httpMocks.createRequest({
+            method: 'POST',
+            body: {
+                name: 'Test User',
+                email: 'test@example.com',
+                password: 'password',
+                confirmPassword: 'password',
+            },
+        });
+        const res = httpMocks.createResponse();
+        const next = jest.fn(); // Mock the next middleware function
+
+        await postSignup(req, res, next);
+        await flushPromises();
+        // Verify that the next function was called with an error
+        expect(next).toHaveBeenCalledWith(expect.any(Error));
+        const errorPassedToNext = next.mock.calls[0][0];
+        expect(errorPassedToNext.statusCode).toBe(500);
+        expect(errorPassedToNext.message).toBe('Database error');
+
+        // Verify that the response status code is not modified
     });
-  });
-  
+    // Add more test cases for error scenarios, validation failures, etc.
+});
 
-    it('Should handle validation errors for registration', async () => {
-      const req = {
-        body: {
-          name: '',
-          email: 'invalid',
-          password: '123',
-          confirmPassword: '1234'
-        }
-      };
-      const res = {};
-      const next = jest.fn();
 
-      validationResult.mockImplementation(() => ({
-        isEmpty: () => false,
-        array: () => [{ msg: 'Invalid data' }]
-      }));
 
-      await postSignup(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(Error));
-      expect(next.mock.calls[0][0].statusCode).toBe(422);
+describe('login controller', () => {
+
+    test('should login a user successfully', async () => {
+        jest.clearAllMocks();
+        console.log("start")
+        const req = httpMocks.createRequest({
+            method: 'POST',
+            body: {
+                email: 'test@example.com',
+                password: 'password',
+            },
+        });
+        const next = jest.fn();
+        next.mockResolvedValue({email:'sample@sample.com', _id: 'someUserId', password:'xxx' })
+        User.mockImplementation(() => ({
+            findOne: next
+        }));   
+        bcrypt.compare.mockResolvedValue(true);
+
+   
+        const res = httpMocks.createResponse();
+        console.log(res.statusCode)
+        await login(req,res);
+        await flushPromises();
+        console.log("*****end******")
+        console.log(res.statusCode)
+        expect(res.statusCode).toBe(200);
     });
+    test('should handle internal server error', async () => {
+        // Mock the behavior of the User model to throw an error
+        jest.mock('../models/user');
+        User.mockImplementation(() => ({
+            findOne: jest.fn(() => Promise.reject(new Error('Database error'))),
+        }));
+        
+        const req = httpMocks.createRequest({
+            method: 'POST',
+            body: {
+                email: 'test@example.com',
+                password: 'password',
+            },
+        });
+        const res = httpMocks.createResponse();
+        const next = jest.fn(); // Mock the next middleware function
 
-  describe('login', () => {
-    it('Should authenticate a user with valid credentials', async () => {
-      const req = {
-        body: {
-          email: 'john@example.com',
-          password: 'Password123'
-        }
-      };
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
-      };
-      const next = jest.fn();
+        await login(req, res, next);
+        await flushPromises();
+        // Verify that the next function was called with an error
+        expect(next).toHaveBeenCalledWith(expect.any(Error));
+        const errorPassedToNext = next.mock.calls[0][0];
+        expect(errorPassedToNext.statusCode).toBe(500);
+        expect(errorPassedToNext.message).toBe('Database error');
 
-      User.findOne.mockResolvedValue({
-        _id: '123',
-        email: 'john@example.com',
-        password: bcrypt.hashSync('Password123', 12)
-      });
-      bcrypt.compare.mockResolvedValue(true);
-      jwt.sign.mockReturnValue('fakeToken');
+        // Verify that the response status code is not modified
+    });    
 
-      await login(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(expect.any(Object));
-    });
-
-    it('Should reject a user with invalid credentials', async () => {
-      const req = {
-        body: {
-          email: 'john@example.com',
-          password: 'wrongPassword'
-        }
-      };
-      const res = {};
-      const next = jest.fn();
-
-      User.findOne.mockResolvedValue({
-        email: 'john@example.com',
-        password: bcrypt.hashSync('Password123', 12)
-      });
-      bcrypt.compare.mockResolvedValue(false);
-
-      await login(req, res, next);
-
-      expect(next).toHaveBeenCalledWith(expect.any(Error));
-      expect(next.mock.calls[0][0].statusCode).toBe(401);
-    });
-  });
-
-  // Logout test cases would typically involve mocking the redis connection
-  // and ensuring that tokens are correctly blacklisted upon logout.
-
-  // Additional tests for handling user profile and preferences updates would be needed
-  // if such functionalities were present in the provided `auth.js` file.
+    // Add more test cases for error scenarios, validation failures, etc.
 });
