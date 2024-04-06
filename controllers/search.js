@@ -73,7 +73,6 @@ exports.getFlights = (req, res, next) => {
             //Function to get airport metadata from Airports collection/Amadeus API
             Object.keys(response.result.dictionaries.locations).forEach(function(key) {
                 let airportInfo = {};
-     
                 promises.push(
                     Airport.findOne({iataCode: key})
                     .then(existingAirport => {
@@ -92,7 +91,8 @@ exports.getFlights = (req, res, next) => {
                             //Function to get airport metadata from API and save it dynamically in database if it does not already exist
                             return amadeus.referenceData.locations.get({
                                 subType: 'AIRPORT',
-                                keyword: key
+                                keyword: key,
+                                countryCode: response.result.dictionaries.locations[key].countryCode
                             })
                             .then(locationResponse => {
                                 //Save in airports collection

@@ -245,7 +245,6 @@ exports.postFlightCheckout = (req, res, next) => {
     //Function to temporarily store user booking information in Redis and create user booking ID to track it post payment completion
     async function storeUserBookingInfo(userBookingInfo, userId, flightId) {
         try {
-            console.log(userBookingInfo);
             const client = await redisConnect;
             let now = Date.now();
             const key = 'flightbookinguserinfo_' + userId + '_' + now + '_' + flightId.toString();
@@ -463,7 +462,6 @@ exports.postBookingFlight = (req, res, next) => {
                 // }
 
             });
-            console.log(flightBooking);
 
             flightBooking.save();
 
@@ -483,8 +481,15 @@ exports.postBookingFlight = (req, res, next) => {
             const session = await stripe.checkout.sessions.retrieve(
                 sessionId
             );
-
-            return session;
+            
+            if(session.status === 'complete') {
+                return session;
+            }
+            else {
+                const error = new Error('Payment has not been completed. Please try again!');
+                error.errorCode = 'payments_err';
+                return next(error);
+            }
         }
         catch (error) {
             error.message = 'Error in retrieving payment session information from Stripe.';
