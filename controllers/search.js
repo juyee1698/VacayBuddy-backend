@@ -12,17 +12,21 @@ const Booking = require('../models/booking');
 const BookingType = require('../models/bookingType');
 const Payment = require('../models/payments');
 const Currency = require('../models/currency');
+const FileType = import('file-type');
 
 const CryptoJS = require('crypto-js');
 const { decrypt } = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 const { ConnectionStates } = require('mongoose');
 
 var amadeus = new Amadeus({
     clientId: process.env.amadeus_clientid,
     clientSecret: process.env.amadeus_api_secret
 });
+
+const places_nearbysearch_api = process.env.places_nearby_search_api;
 
 //Controller function to get flight search results and store it temporarily for future reference - when user selects a flight
 exports.getFlights = (req, res, next) => {
@@ -514,10 +518,23 @@ exports.getSightSeeingActivities = (req, res, next) => {
 
             const response = await axios.get(
                 `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location}&radius=${radius}&type=${type}&rankby=prominence&key=${places_nearbysearch_api}`
-                )
+            );
+
+            //console.log(response);
+            
+            const next_page_token = response.next_page_token;
+
+            const next_page_response = await axios.get(
+                `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${next_page_token}&key=${places_nearbysearch_api}`
+            );
+
+            const results = response.data.results;
 
             
-            console.log(response.data);
+            results.push(...next_page_response.data.results)
+            
+            //console.log(results);
+            return results;
         }
         catch (err) {
             return next(err);
@@ -525,19 +542,48 @@ exports.getSightSeeingActivities = (req, res, next) => {
         
     }
 
-    async function storeSightsRecommendations(city) {
-        
+    async function storeSightsRecommendations(sightsSearchResults) {
+        try {
+            let now = Date.now();
+            let today = now - (now % 86400000)
+            const userId = req.userId;
+            const client = await redisConnect;
+            const key = 'sightseeingsearch_' + userId + '_' + now;
+            
+            await client.set(key, JSON.stringify(sightsSearchResults));
+            await client.expire(key, 900);
+            console.log('Sightseeing search results stored in Redis:', key);
+
+            var encrypted = CryptoJS.AES.encrypt(key, "VacayBuddy Sightseeing Search");
+
+            return encrypted;
+        }
+        catch (err) {
+            return next(err);
+        }
     }
 
     (async () => {
         try {
             const cityDetails = await getCityGeographicDetails(city, countryCode);
 
-            await getSightsRecommendations(cityDetails, type, radius);
+            const sightsSearchResults = await getSightsRecommendations(cityDetails, type, radius);
 
-        } catch (error) {
-            // error.message = 'Error retrieving flight search results';
-            // error.errorCode = 'internal_server_err';
+            //console.log(sightsSearchResults.length);
+
+            const searchContinuationId = await storeSightsRecommendations(sightsSearchResults);
+
+            res.status(201).json({
+                message: 'Sightseeing results retrieved successfully!',
+                searchContinuationId: searchContinuationId.toString(),
+                sightseeingType: type,
+                sightsSearchResults: sightsSearchResults
+            });
+
+        } 
+        catch (error) {
+            error.message = 'Error retrieving sightseeing search results. Please try again!';
+            error.errorCode = 'internal_server_err';
             return next(error);
         }
     })();
@@ -545,7 +591,132 @@ exports.getSightSeeingActivities = (req, res, next) => {
 };
 
 exports.selectSightSeeingActivity = (req, res, next) => {
-    
+    const searchContinuationId = req.body.searchContinuationId;
+    const placeId = req.body.placeId;
+    const userId = req.userId;
+
+    //Handle server validation errors
+    const errors = validationResult(req);
+    if(!errors.isEmpty()) {
+        const error = new Error('Server Validation failed.');
+        error.errorCode = "client_err";
+        error.statusCode = 422;
+        error.data = errors.array();
+        throw error;
+    }
+
+    async function getSightsSearchKey(searchContinuationId) {
+        try {
+            bytes = CryptoJS.AES.decrypt(searchContinuationId, "VacayBuddy Sightseeing Search");
+            decryptedKey = bytes.toString(CryptoJS.enc.Utf8);
+            console.log(decryptedKey);
+            return decryptedKey;
+
+        }
+        catch(error) {
+
+        }
+    }
+
+    async function getPlaceDetails(sightsSearchKey, placeId) {
+        try {
+            const client = await redisConnect;
+
+            const sightsSearchResultsStr = await client.get(sightsSearchKey);
+
+            //Check if sight seeing search results have expired in Redis
+            if(sightsSearchResultsStr === undefined || sightsSearchResultsStr == null) {
+                error = new Error('Sorry! Your search result has expired.');
+                error.errorCode = 'search_result_expiry';
+                return next(error);
+            }
+            //Parse it in JSON format
+            const sightsSearchResults = await JSON.parse(sightsSearchResultsStr);
+
+            const placeDetails = sightsSearchResults.find(sight => sight.place_id === placeId.toString());
+
+            return placeDetails;
+        }
+        catch(error) {
+            error.message = 'Error retrieving sightseeing search information from Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
+        }
+    }
+
+    async function getPlaceAdditionalDetails(placeId) {
+        try {
+            console.log(placeId);
+            const placeAdditionalDetails = await axios.get(
+                `https://maps.googleapis.com/maps/api/place/details/json?fields=name%2Crating%2Cformatted_phone_number%2Caddress_components%2Cphoto%2Curl%2Cvicinity%2Cuser_ratings_total&place_id=${placeId}&key=${places_nearbysearch_api}`
+            );
+
+            return placeAdditionalDetails.data.result;
+        }
+        catch(error) {
+            error.message = 'Error retrieving sightseeing search information from Redis';
+            error.errorCode = 'redis_err';
+            return next(error);
+        }
+    }
+
+    async function getPlacePhoto(placeDetails, placeAdditionalDetails) {
+        try {
+
+            const primary_photo_reference = placeDetails.photos[0].photo_reference;
+            const placePrimaryPhoto = await axios.get(
+                `https://maps.googleapis.com/maps/api/place/photo?maxheight=400&maxwidth=500&photo_reference=${primary_photo_reference}&key=${places_nearbysearch_api}`,
+                { responseType: 'stream' }
+            );  
+
+            const fileName = `${placeDetails.place_id}.jpg`;
+
+            const filePath = path.join(__dirname, '../images', fileName);
+
+            // Create a writable stream to save the photo
+            const writer = fs.createWriteStream(filePath);
+
+            // Pipe the photo stream to the writable stream
+            placePrimaryPhoto.data.pipe(writer);
+
+            // Return a promise to indicate when the photo is saved successfully
+            return new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+        }
+        catch(error) {
+            error.message = 'Server error';
+            error.errorCode = 'api_response_err';
+            return next(error);
+        }
+    }
+
+    (async () => {
+        try {
+            const key = await getSightsSearchKey(searchContinuationId);
+
+            const placeDetails = await getPlaceDetails(key, placeId);
+
+            console.log("Hello");
+
+            const placeAdditionalDetails = await getPlaceAdditionalDetails(placeId);
+
+            await getPlacePhoto(placeDetails, placeAdditionalDetails);
+
+            res.status(201).json({
+                message: 'Sightseeing results retrieved successfully!',
+                placeDetails: placeDetails,
+                placeAdditionalDetails: placeAdditionalDetails
+            });
+
+        } catch (error) {
+            error.message = 'Error retrieving sightseeing search results. Please try again!';
+            error.errorCode = 'internal_server_err';
+            return next(error);
+        }
+    })();
 };
 
 

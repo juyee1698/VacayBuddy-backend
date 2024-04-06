@@ -67,5 +67,8 @@ router.post('/sightSearch',
     isAuth, 
     searchController.getSightSeeingActivities);
 
+router.post('/sightSearch/selectSight',
+    isAuth, 
+    searchController.selectSightSeeingActivity);
 
 module.exports = router; 
