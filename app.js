@@ -11,17 +11,23 @@ const redis = require('redis');
 const app = express();
 // Initialize Passport and restore authentication state if available
 
-app.get('/', (req, res) => {
-    res.send('Hello, World!');
-  });
+
+// const fileStorage = multer.diskStorage({
+//     destination: (req,file,cb) => {
+//         cb(null,'images')
+//     },
+//     filename: (req,file,cb) => {
+//         cb(null,new Date().getTime()+'-'+file.originalname)
+//     }
+// });
 
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
+const searchRoutes = require('./routes/search');
 const authRoutes = require('./routes/auth');
 const o2authRoutes = require('./routes/o2auth_google')
 
 
-//app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
 app.use((req, res, next) => {
@@ -32,15 +38,17 @@ app.use((req, res, next) => {
 });
 
 app.use('/admin',adminRoutes);
-app.use(bookingRoutes);
 app.use('/auth', authRoutes);
+app.use(bookingRoutes);
+app.use(searchRoutes);
 app.use('/o2auth', o2authRoutes);
 
 app.use((error, req, res, next) => {
     const status = error.statusCode || 500;
+    const errorCode = error.errorCode;
     const message = error.message;
     const data = error.data;
-    res.status(status).json({ message: message, data: data });
+    res.status(status).json({ statusCode: status, message: message, data: data, errorCode: errorCode });
 });
 
 mongoose.connect(process.env.mongoose_connect)
