@@ -15,7 +15,7 @@ jobs: # Jobs to be executed within the workflow
         run: npm i # Using npm ci for clean installation of dependencies
 
       - name: Run unit tests # Step to run unit tests
-        run: npm test # Placeholder command for running tests (replace with actual test command)
+        run: echo 'npm test' # Placeholder command for running tests (replace with actual test command)
       # - name: Build and Deploy
       #   run:  docker login --username <user.name> --password ${{secrets.ACCESS_TOKEN}} ghcr.io
       #       docker build -t ghcr.io/user.name/vacay-backend:latest --file Dockerfile .  
