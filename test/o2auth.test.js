@@ -1,20 +1,24 @@
 const request = require('supertest');
 const express = require('express');
 const router = require('../routes/o2auth_google'); // Assuming your route file is named googleAuth.js
-const user = require('../models/user')
 // Mock the google-auth-library module
 const OAuth2Client = require('google-auth-library').OAuth2Client;
 jest.mock('google-auth-library');
 
+jest.mock('../models/user');
+jest.mock('../util/file')
+jest.mock('../util/path')
+jest.mock('../util/redis');
 
 // Create a new Express app
+// Mount the router under /auth
 const app = express();
 app.use(express.json());
-app.use('/o2auth', router); // Mount the router under /auth
-
+app.use('/o2auth', router); 
 describe('Google OAuth route', () => {
     
     test('should respond with a JWT token and user ID', async () => {
+        console.log("ok")
         // Mock the behavior of verifyIdToken method
         const verifyIdTokenMock = jest.fn();
         verifyIdTokenMock.mockResolvedValue({
@@ -31,10 +35,11 @@ describe('Google OAuth route', () => {
         }));
         // Mock the behavior of the OAuth2Client constructor
         
-        jest.mock('../models/user');
+       
         const User = require('../models/user');
         const userData = { email: 'user@example.com', _id: 'user-id' };
         User.findOne.mockResolvedValue(userData);
+
         const response = await request(app)
             .post('/o2auth/google')
             .send({ access_token: 'valid_access_token' });

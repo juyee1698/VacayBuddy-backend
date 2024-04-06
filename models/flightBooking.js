@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { redisConnect } = require('../util/redis');
-const { strike } = require('../util/path');
+// const { strike } = require('../util/path');
 
 const Schema = mongoose.Schema;
 
