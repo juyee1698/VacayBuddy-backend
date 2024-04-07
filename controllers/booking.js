@@ -10,6 +10,8 @@ const Booking = require('../models/booking');
 const BookingType = require('../models/bookingType');
 const Payment = require('../models/payments');
 const Currency = require('../models/currency');
+const nodemailer = require('nodemailer');
+const sendgridTransport = require('nodemailer-sendgrid-transport');
 
 const CryptoJS = require('crypto-js');
 const { decrypt } = require('dotenv');
@@ -23,6 +25,11 @@ var amadeus = new Amadeus({
     clientSecret: process.env.amadeus_api_secret
 });
 
+const transporter = nodemailer.createTransport(sendgridTransport({
+    auth:{
+        api_key: process.env.sengrid_key
+    }
+}));
 
 //Controller function to get final flight booking information before user decides to checkout
 exports.bookFlight = (req, res, next) => {
@@ -139,7 +146,6 @@ exports.postFlightCheckout = (req, res, next) => {
         try {
             bytes = CryptoJS.AES.decrypt(journeyContinuationId, "VacayBuddy Flight Journey");
             decryptedKey = bytes.toString(CryptoJS.enc.Utf8);
-            console.log("Decrypted text", decryptedKey);
             flightId = decryptedKey.toString(CryptoJS.enc.Utf8).split('_')[3];
 
             return {     
@@ -217,8 +223,6 @@ exports.postFlightCheckout = (req, res, next) => {
                         quantity: 1,
                     }]
                 ,
-                //amount_subtotal: parseInt(flightBookingInfo.flightInfo.price.base) * 100,
-                //amount_total: parseInt(flightBookingInfo.flightInfo.price.total) * 100,
                 metadata: {
                     code: "flightbookinguserinfo",
                     customerName: userBookingInfo.name,
@@ -319,8 +323,7 @@ exports.postBookingFlight = (req, res, next) => {
     async function getFlightKeyDetails(journeyContinuationId) {
         try {
             bytes = CryptoJS.AES.decrypt(journeyContinuationId, "VacayBuddy Flight Journey");
-            decryptedKey = bytes.toString(CryptoJS.enc.Utf8);
-            
+            decryptedKey = bytes.toString(CryptoJS.enc.Utf8);      
             flightId = decryptedKey.split('_')[3];
 
             return {     
@@ -450,7 +453,7 @@ exports.postBookingFlight = (req, res, next) => {
                     destinationTrip: flightBookingInfo.flightInfo.itineraries[0].duration,
                     returnTrip: returnTripDuration
                 },
-                cabin: flightBookingInfo.flightInfo.price.fareDetailsBySegment.cabin,
+                cabin: flightBookingInfo.flightInfo.price.fareDetailsBySegment[0].cabin,
                 price: {
                     total: flightBookingInfo.flightInfo.price.total,
                     base: flightBookingInfo.flightInfo.price.base,
@@ -570,6 +573,288 @@ exports.postBookingFlight = (req, res, next) => {
         }
     }
 
+    //Function to send booking email confirmation to the user
+    async function sendBookingEmailConfirmation(bookingId, flightBookingId, paymentId) {
+        try {
+            const bookingDetails = await Booking.findOne({_id:bookingId});
+            const flightBookingDetails = await FlightBooking.findOne({_id:flightBookingId});
+            const paymentDetails = await Payment.findOne({_id:paymentId});
+
+            const airportMetadata = await JSON.parse(flightBookingDetails.airportMetadata);
+            const airlineCarrierMetadata = await JSON.parse(flightBookingDetails.airlineCarrierMetadata);
+
+            const originCity = airportMetadata.find(metadata => 
+                metadata.iataCode === flightBookingDetails.originLocation
+            )?.cityName;
+            const destinationCity = airportMetadata.find(metadata => 
+                metadata.iataCode === flightBookingDetails.destinationLocation
+            )?.cityName;
+
+            const noOfTravelers = (flightBookingDetails.travelerInfo.adults + flightBookingDetails.travelerInfo.children + flightBookingDetails.travelerInfo.infants);
+            const currencyInfo = await Currency.findOne({_id:paymentDetails.currencyId});
+            const currencySymbol = currencyInfo.symbol;
+
+            return transporter.sendMail({
+                to:paymentDetails.userBookingInfo.userEmail,
+                from:'sabadejuyee21@gmail.com',
+                subject:'VacayBuddy flight purchase information',
+                html:`<!DOCTYPE html>
+                <html lang="en">
+                
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+                    <link rel="icon" href="/img/bookicon.png" type="image/png">
+                    <!-- Bootstrap CSS -->
+                    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.css" integrity="sha512-EaaldggZt4DPKMYBa143vxXQqLq5LE29DG/0OoVenoyxDrAScYrcYcHIuxYO9YNTIQMgD8c8gIUU8FQw7WpXSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" /> 
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+
+                    <style>
+                        .container-fluid {
+                            width: 100%;
+                            padding-right: 15px;
+                            padding-left: 15px;
+                            margin-right: auto;
+                            margin-left: auto
+                        }
+                        .cat_product_area .latest_product_inner {
+                            padding-top: 30px;
+                            margin-bottom: -50px; }
+                            .cat_product_area .latest_product_inner .f_p_item {
+                            margin-bottom: 50px; }
+                        
+                        .section_gap {
+                            padding: 50px 0px; }
+                            @media (max-width: 1224px) {
+                                .section_gap {
+                                    padding: 60px 0px; 
+                                } 
+                        }
+                        .row {
+                            display: -ms-flexbox;
+                            display: flex;
+                            -ms-flex-wrap: wrap;
+                            flex-wrap: wrap;
+                            margin-right: -15px;
+                            margin-left: -15px
+                        }
+                        .flex-row-reverse {
+                            -ms-flex-direction: row-reverse !important;
+                            flex-direction: row-reverse !important
+                        }
+                        .col-lg-2 {
+                            -ms-flex: 0 0 16.666667%;
+                            flex: 0 0 16.666667%;
+                            max-width: 16.666667%
+                        }
+                        .col-lg-8 {
+                            -ms-flex: 0 0 66.666667%;
+                            flex: 0 0 66.666667%;
+                            max-width: 66.666667%
+                        }
+                        .col-lg-6 {
+                            -ms-flex: 0 0 50%;
+                            flex: 0 0 50%;
+                            max-width: 50%
+                        }
+                        .col-lg-12 {
+                            -ms-flex: 0 0 100%;
+                            flex: 0 0 100%;
+                            max-width: 100%
+                        }
+                        .left_widgets {
+                            margin-bottom: 30px;
+                            background-color: white;
+                            box-shadow: 0px 10px 10px 0px rgba(153, 153, 153, 0.1); }
+                            .left_widgets:last-child {
+                                margin-bottom: 0px; 
+                        }
+                        .cat_widgets .list li {
+                            margin-bottom: 13px; }
+                            .cat_widgets .list li a {
+                                font-size: 14px;
+                                font-family: "Roboto", sans-serif;
+                                color: #222222; }
+                            .cat_widgets .list li .list {
+                                margin-top: 10px;
+                                padding-left: 35px;
+                                border-top: 1px solid #eeeeee;
+                                padding-top: 10px;
+                                display: none; 
+                        }
+                        .cat_widgets .widgets_inner .list li a,
+                            .p_filter_widgets .widgets_inner .list li a{
+                            color:#815304;
+                        }
+
+                        .cat_widgets .widgets_inner .list li a.active,
+                        .p_filter_widgets .widgets_inner .list li a .active{
+                            font-weight: bold;
+                            color:#3b2a12;
+                        }
+                        .widgets_inner {
+                            /* background-color: rgb(224, 221, 216); */
+                            padding-left: 30px;
+                            padding-right: 30px;
+                            padding-top: 15px;
+                            padding-bottom: 15px;
+                            color: #222222;
+                        }
+                        .p_filter_widgets .widgets_inner {
+                            border-bottom: 1px solid #eeeeee; }
+                            .p_filter_widgets .widgets_inner:last-child {
+                                border-bottom: 0px; }
+                        .p_filter_widgets p {
+                            color: #222222;
+                            font-size: 13px;
+                            font-family: "Roboto", sans-serif;
+                            font-weight: normal;
+                            margin-bottom: 1px;
+                            margin-top: 1px; 
+                        }
+                        .left_sidebar_area{
+                            margin-top: 50px;
+                        }
+                        .logo {
+                            text-align: center;
+                            align-content: center;
+                        }
+                    </style>
+                </head>
+                
+                <body>
+                    <section class="cat_product_area section_gap">
+                        <div class="container-fluid">
+                            <div class="row flex-row-reverse">
+                                <div class="col-lg-2"></div>
+                                <div class="col-lg-8">
+                                    <div class="left_sidebar_area">
+                                        <aside class="left_widgets cat_widgets">
+                                            <div class="logo">
+                                                <img src="https://i.imgur.com/wlfL1nF.jpg" alt="Icon">
+                                            </div>
+                                            <div class="widgets_inner">
+                                                <h3>Thank you, ${paymentDetails.userBookingInfo.userName}! Your booking is confirmed.</h3>
+                                                <h5>Booking ID: ${bookingId.toString()}</h5>
+                                            </div>
+                                            <hr style="width:100%;text-align:center;margin-left:0">
+                                            <div class="widgets_inner">
+                                                <div class="row">
+                                                    <div class="col-lg-12">
+                                                        <a href="#" style="color: #222222;">
+                                                            <i class="fa fa-user"></i>
+                                                            Traveler Details
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                        <div class="col-lg-12">
+                                                            <p>Adults: ${flightBookingDetails.travelerInfo.adults}</p>
+                                                            <p>Children: ${flightBookingDetails.travelerInfo.children}</p>
+                                                            <p>Infants: ${flightBookingDetails.travelerInfo.infants}</p>
+                                                        </div>                                                    
+                                                </div>  
+                                            </div>
+                
+                                            <div class="widgets_inner">
+                                                <div class="row">
+                                                    <div class="col-lg-12">
+                                                        <a href="#" style="color: #222222;">
+                                                        <i class="fa fa-plane"></i>
+                                                        ${originCity} (${flightBookingDetails.originLocation}) to ${destinationCity} (${flightBookingDetails.destinationLocation})
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                ${flightBookingDetails.destinationTravelSegments.map(segment => `
+                                                <div class="p_filter_widgets">  
+                                                    <p>${airportMetadata.find(metadata => 
+                                                        metadata.iataCode === segment.departure.iataCode)?.airportName } to 
+                                                        ${airportMetadata.find(metadata => 
+                                                            metadata.iataCode === segment.arrival.iataCode)?.airportName }</p>
+                                                    <p>Airline: ${airlineCarrierMetadata[segment.carrierCode]}</p>
+                                                    <p>Class: ${flightBookingDetails.cabin}</p>
+                                                    <p>Journey Date: ${segment.departure.at}</p>
+                                                    <p>Duration: ${segment.duration}</p>
+                                                </div>
+                                                ${flightBookingDetails.destinationTravelSegments.length > 1 ? `<hr style="width:55%;text-align:left;margin-left:1px">` : ``}
+                                                `).join('')}
+
+                                                ${flightBookingDetails.returnTravelSegments ? flightBookingDetails.returnTravelSegments.map(segment => `
+                                                <div class="p_filter_widgets">   
+                                                    <p>${segment.departure.iataCode} to ${segment.arrival.iataCode}</p>
+                                                    <p>Airline: ${airlineCarrierMetadata[segment.carrierCode]}</p>
+                                                    <p>Class: ${flightBookingDetails.cabin}</p>
+                                                    <p>Journey Date: ${segment.departure.at}</p>
+                                                    <p>Duration: ${segment.duration}</p>
+                                                </div>
+                                                ${flightBookingDetails.returnTravelSegments.length > 1 ? `<hr style="width:60%;text-align:left;margin-left:1px">` : ``}
+                                                `).join('') : ``}
+                                            </div>
+                                            <hr style="width:100%;text-align:center;margin-left:0">
+                                            <div class="widgets_inner">
+                                                <div class="row">
+                                                    <div class="col-lg-12">
+                                                        <h4>Price Summary</h4>
+                                                    </div>
+                                                </div>
+                                                <div class="p_filter_widgets">
+                                                    <div class="row">
+                                                        <div class="col-lg-12">
+                                                            ${flightBookingDetails.returnTravelSegments ? `<p style="font-weight: bold;font-size: 12px;">Return flight</p>` : `<p style="font-weight: bold;font-size: 12px;">One way flight</p>`}
+                                                        </div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-lg-12">
+                                                            <p>${noOfTravelers} traveler: ${currencySymbol}${flightBookingDetails.price.base}</p>
+                                                        </div>
+                                                        
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-lg-12">
+                                                            <p>Taxes and Fees: ${currencySymbol}${flightBookingDetails.price.taxes}</p>
+                                                        </div>
+                                                        
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-lg-12">
+                                                            <h4>Total: ${currencySymbol}${flightBookingDetails.price.total}</h4>
+                                                        </div>
+                                                       
+                                                    </div>
+                                                </div>
+                                            </div>
+                 
+                                            <hr style="width:100%;text-align:center;margin-left:0">
+                            
+                                            <div class="widgets_inner">
+                                                <h4 class="footer_email">We're here to help.</h4>
+                                                <h6>Contact VacayBuddy for further guidance on your itinerary.</h6>
+                                                <h5>Booking ID: ${bookingId.toString()}</h5>
+                                            </div>
+                                            <div class="br"></div>
+                                        </aside>
+                                    </div>
+                
+                                </div>
+                                <div class="col-lg-2"></div>
+                            </div>
+                        </div>
+                    </section>
+                </body>
+                
+                </html>`
+        });
+            
+        }
+        catch(error) {
+            console.log(error);
+            error.message = 'Error in sending booking confirmation on email.';
+            error.errorCode = 'internal_server_err'
+            return next(error);
+        }
+    }
+
     //Immediately invoked function expression
     (async () => {
         try {
@@ -590,14 +875,17 @@ exports.postBookingFlight = (req, res, next) => {
 
             const paymentId = await saveUserPaymentDetails(flightBookingConfirmationInfo, userBookingConfirmationInfo, userPaymentSession);
 
-            const bookingId = await storeBooking(flightBookingId, paymentId, userPaymentSession);
+            const bookingId = await storeBooking(flightBookingId, paymentId, userPaymentSession, flightBookingConfirmationInfo);
+
+            await sendBookingEmailConfirmation(bookingId, flightBookingId, paymentId);
 
             res.status(201).json({
-                message: 'Flight Booking has been successfully completed',
+                message: 'Flight Booking has been successfully completed. An email confirmation has been sent to your registered email address.',
                 bookingId: bookingId
             });
             
         } catch (error) {
+            console.log(error);
             error.message = 'Error in completing flight booking. Please try again later!';
             error.errorCode = 'internal_server_err';
             return next(error);
@@ -605,8 +893,10 @@ exports.postBookingFlight = (req, res, next) => {
     })();
 };
 
-exports.getBookingInvoice;
+//Controller function to get booking history
+exports.getBookings = (req, res, next) => {
+    
+};
 
-exports.getBookings;
 
 

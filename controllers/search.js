@@ -78,7 +78,7 @@ exports.getFlights = (req, res, next) => {
                     .then(existingAirport => {
                         if(existingAirport){
                             airportInfo["iataCode"] = existingAirport.iataCode;
-                            airportInfo["airportName"] = existingAirport.name;
+                            airportInfo["airportName"] = existingAirport.airportName;
                             airportInfo["cityName"] = existingAirport.cityName;
                             airportInfo["countryName"] = existingAirport.countryName;
                             airportInfo["cityCode"] = existingAirport.cityCode;
@@ -110,7 +110,7 @@ exports.getFlights = (req, res, next) => {
                             .then(savedAirport => {
                                 return {
                                     iataCode: savedAirport.iataCode,
-                                    airportName: savedAirport.name,
+                                    airportName: savedAirport.airportName,
                                     cityName: savedAirport.cityName,
                                     countryName: savedAirport.countryName,
                                     cityCode: savedAirport.cityCode,
@@ -265,6 +265,7 @@ exports.getFlights = (req, res, next) => {
         try {
             const flights = await processFlightOffers();
             await storeFlightResults(flights);
+
             res.status(201).json({
                 message: 'Flight results retrieved successfully!',
                 ...flights
