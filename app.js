@@ -4,13 +4,18 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-//const MongoDBStore = require('connect-mongodb-session')(session);
 const csrf = require('csurf');
 const flash = require('connect-flash');
 const multer = require('multer');
 const redis = require('redis');
-
+const passport = require('passport');
+const cookieSession = require('cookie-session');
 const app = express();
+const session = require( 'express-session');
+
+// Initialize Passport and restore authentication state if available
+app.use(passport.initialize());
+app.use(passport.session());
 
 
 // const fileStorage = multer.diskStorage({
@@ -31,12 +36,14 @@ const app = express();
 //     }
 // };
 
+
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
 const searchRoutes = require('./routes/search');
 const authRoutes = require('./routes/auth');
+const o2authRoutes = require('./routes/oauth2')
 
-//app.use(bodyParser.urlencoded({extended: true}));
+
 app.use(bodyParser.json());
 
 app.use((req, res, next) => {
@@ -54,7 +61,7 @@ app.use('/admin',adminRoutes);
 app.use('/auth', authRoutes);
 app.use(bookingRoutes);
 app.use(searchRoutes);
-
+app.use('/o2auth', o2authRoutes);
 
 app.use((error, req, res, next) => {
     const status = error.statusCode || 500;
