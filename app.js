@@ -13,6 +13,12 @@ const cookieSession = require('cookie-session');
 const app = express();
 const session = require( 'express-session');
 
+app.use(session({
+    secret: 'your_secret_key',
+    resave: false,
+    saveUninitialized: true
+}));
+
 // Initialize Passport and restore authentication state if available
 app.use(passport.initialize());
 app.use(passport.session());
@@ -54,8 +60,8 @@ app.use((req, res, next) => {
 });
 
 // app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
-// app.use(express.static(path.join(__dirname,'public')));
-// app.use('/images',express.static(path.join(__dirname,'images')));
+app.use(express.static(path.join(__dirname,'public')));
+//app.use('/images',express.static(path.join(__dirname,'images')));
 
 app.use('/admin',adminRoutes);
 app.use('/auth', authRoutes);
