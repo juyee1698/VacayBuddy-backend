@@ -146,7 +146,6 @@ exports.postFlightCheckout = (req, res, next) => {
         try {
             bytes = CryptoJS.AES.decrypt(journeyContinuationId, "VacayBuddy Flight Journey");
             decryptedKey = bytes.toString(CryptoJS.enc.Utf8);
-            console.log("Decrypted text", decryptedKey);
             flightId = decryptedKey.toString(CryptoJS.enc.Utf8).split('_')[3];
 
             return {     
@@ -224,8 +223,6 @@ exports.postFlightCheckout = (req, res, next) => {
                         quantity: 1,
                     }]
                 ,
-                //amount_subtotal: parseInt(flightBookingInfo.flightInfo.price.base) * 100,
-                //amount_total: parseInt(flightBookingInfo.flightInfo.price.total) * 100,
                 metadata: {
                     code: "flightbookinguserinfo",
                     customerName: userBookingInfo.name,
@@ -252,7 +249,6 @@ exports.postFlightCheckout = (req, res, next) => {
     //Function to temporarily store user booking information in Redis and create user booking ID to track it post payment completion
     async function storeUserBookingInfo(userBookingInfo, userId, flightId) {
         try {
-            console.log(userBookingInfo);
             const client = await redisConnect;
             let now = Date.now();
             const key = 'flightbookinguserinfo_' + userId + '_' + now + '_' + flightId.toString();
@@ -327,8 +323,7 @@ exports.postBookingFlight = (req, res, next) => {
     async function getFlightKeyDetails(journeyContinuationId) {
         try {
             bytes = CryptoJS.AES.decrypt(journeyContinuationId, "VacayBuddy Flight Journey");
-            decryptedKey = bytes.toString(CryptoJS.enc.Utf8);
-            
+            decryptedKey = bytes.toString(CryptoJS.enc.Utf8);      
             flightId = decryptedKey.split('_')[3];
 
             return {     
@@ -571,6 +566,7 @@ exports.postBookingFlight = (req, res, next) => {
         }
     }
 
+    //Function to send booking email confirmation to the user
     async function sendBookingEmailConfirmation(bookingId, flightBookingId, paymentId) {
         try {
             const bookingDetails = await Booking.findOne({_id:bookingId});
@@ -890,6 +886,7 @@ exports.postBookingFlight = (req, res, next) => {
     })();
 };
 
+//Controller function to get booking history
 exports.getBookings = (req, res, next) => {
     
 };
