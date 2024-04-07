@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" href="/img/bookicon.png" type="image/png">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.css" integrity="sha512-EaaldggZt4DPKMYBa143vxXQqLq5LE29DG/0OoVenoyxDrAScYrcYcHIuxYO9YNTIQMgD8c8gIUU8FQw7WpXSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" /> 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+
+    <style>
+        .container-fluid {
+            width: 100%;
+            padding-right: 15px;
+            padding-left: 15px;
+            margin-right: auto;
+            margin-left: auto
+        }
+        .cat_product_area .latest_product_inner {
+            padding-top: 30px;
+            margin-bottom: -50px; }
+            .cat_product_area .latest_product_inner .f_p_item {
+              margin-bottom: 50px; }
+        
+        .section_gap {
+            padding: 50px 0px; }
+            @media (max-width: 1224px) {
+                .section_gap {
+                    padding: 60px 0px; 
+                } 
+        }
+        .row {
+            display: -ms-flexbox;
+            display: flex;
+            -ms-flex-wrap: wrap;
+            flex-wrap: wrap;
+            margin-right: -15px;
+            margin-left: -15px
+        }
+        .flex-row-reverse {
+            -ms-flex-direction: row-reverse !important;
+            flex-direction: row-reverse !important
+        }
+        .col-lg-2 {
+            -ms-flex: 0 0 16.666667%;
+            flex: 0 0 16.666667%;
+            max-width: 16.666667%
+        }
+        .col-lg-8 {
+            -ms-flex: 0 0 66.666667%;
+            flex: 0 0 66.666667%;
+            max-width: 66.666667%
+        }
+        .left_widgets {
+            margin-bottom: 30px;
+            background-color: white;
+            box-shadow: 0px 10px 10px 0px rgba(153, 153, 153, 0.1); }
+            .left_widgets:last-child {
+                margin-bottom: 0px; 
+        }
+        .cat_widgets .list li {
+            margin-bottom: 13px; }
+            .cat_widgets .list li a {
+                font-size: 14px;
+                font-family: "Roboto", sans-serif;
+                color: #222222; }
+            .cat_widgets .list li .list {
+                margin-top: 10px;
+                padding-left: 35px;
+                border-top: 1px solid #eeeeee;
+                padding-top: 10px;
+                display: none; 
+        }
+        .cat_widgets .widgets_inner .list li a,
+            .p_filter_widgets .widgets_inner .list li a{
+            color:#815304;
+        }
+
+        .cat_widgets .widgets_inner .list li a.active,
+        .p_filter_widgets .widgets_inner .list li a .active{
+            font-weight: bold;
+            color:#3b2a12;
+        }
+        .widgets_inner {
+            /* background-color: rgb(224, 221, 216); */
+            padding-left: 30px;
+            padding-right: 30px;
+            padding-top: 15px;
+            padding-bottom: 15px;
+            color: #222222;
+        }
+        .p_filter_widgets .widgets_inner {
+            border-bottom: 1px solid #eeeeee; }
+            .p_filter_widgets .widgets_inner:last-child {
+                border-bottom: 0px; }
+        .p_filter_widgets p {
+            color: #222222;
+            font-size: 13px;
+            font-family: "Roboto", sans-serif;
+            font-weight: normal;
+            margin-bottom: 1px;
+            margin-top: 3px; 
+        }
+        .p_filter_widgets p .p-bold {
+            color: #222222;
+            font-size: 15px;
+            font-weight: bold;
+            font-family: "Roboto", sans-serif;
+            font-weight: normal;
+            margin-bottom: 1px;
+            margin-top: 3px; 
+        }
+        .left_sidebar_area{
+		    margin-top: 50px;
+	    }
+        .logo {
+            text-align: center;
+            align-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <section class="cat_product_area section_gap">
+        <div class="container-fluid">
+            <div class="row flex-row-reverse">
+                <div class="col-lg-2"></div>
+                <div class="col-lg-8">
+                    <div class="left_sidebar_area">
+                        <aside class="left_widgets cat_widgets">
+                            <div class="logo">
+                                <img src="https://i.imgur.com/wlfL1nF.jpg" alt="Icon">
+                            </div>
+                            <div class="widgets_inner logo">
+                                <h3>Thank you, ${name}! Your booking is confirmed.</h3>
+                                <h6>Booking ID: 123456</h6>
+                            </div>
+                            <div class="widgets_inner">
+                                <div class="row">
+                                    <div class="col-lg-12">
+                                        <a href="#" style="color: #222222;">
+                                            <i class="fa fa-user"></i>
+                                            Traveler Details
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-lg-12">
+                                        <p>Juyee Anand Sabade (Adult)</p>
+                                    </div>
+                                </div>  
+                            </div>
+
+                            <div class="widgets_inner">
+                                <div class="row">
+                                    <div class="col-lg-12">
+                                        <a href="#" style="color: #222222;">
+                                            <i class="fa fa-plane"></i>
+                                            San Jose (SJC) to Indianapolis (IND)
+                                        </a>
+                                        
+                                    </div>
+                                </div>
+                                <div class="p_filter_widgets">
+                                    <p>Airline:</p>
+                                    <p>Class:</p>
+                                    <p>Journey Date:</p>
+                                    <p>Duration:</p>
+                                </div>
+                                <hr style="width:50%;text-align:left;margin-left:1px">
+                                <a href="#" style="color: #222222;">
+                                    <i class="fa fa-clock-o"></i>
+                                    Layover: 45m
+                                </a>
+                                <!-- <p class="p_filter_widgets">Layover: 45m</p> -->
+                                <hr style="width:50%;text-align:left;margin-left:1px">
+                                <div class="p_filter_widgets">
+                                    <p>Airline:</p>
+                                    <p>Class:</p>
+                                    <p>Journey Date:</p>
+                                    <p>Duration:</p>
+                                </div>
+                            </div>
+                            <hr style="width:100%;text-align:center;margin-left:0">
+                            <div class="widgets_inner">
+                                <div class="row">
+                                    <div class="col-lg-12">
+                                        
+                                        <h4>Price Summary</h4>
+                                        
+                                    </div>
+                                </div>
+                                <div class="p_filter_widgets">
+                                    <div class="row">
+                                        <div class="col-lg-4">
+                                            <p style="font-weight: bold;font-size: 15px;">One Way Flight</p>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-4">
+                                            <p>${noOfTravelers} traveler</p>
+                                        </div>
+                                        <div class="col-lg-4" style="text-align: right;">
+                                            <p>Price</p>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-4">
+                                            <p>Taxes and Fees</p>
+                                        </div>
+                                        <div class="col-lg-4" style="text-align: right;">
+                                            <p>Price</p>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-4">
+                                            <h5>Total</h5>
+                                        </div>
+                                        <div class="col-lg-4" style="text-align: right;">
+                                            <p>Price</p>
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                            </div>
+
+                            <hr style="width:100%;text-align:center;margin-left:0">
+                            
+                            <div class="widgets_inner">
+                                <h4 class="footer_email">We're here to help.</h4>
+                                <h6>Contact VacayBuddy for further guidance on your itinerary.</h6>
+                            </div>
+                            <div class="br"></div>
+                        </aside>
+                    </div>
+
+                </div>
+                <div class="col-lg-2"></div>
+            </div>
+        </div>
+    </section>
+
+</body>
+
+</html>
