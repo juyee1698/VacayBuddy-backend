@@ -6,7 +6,7 @@ const { redisConnect } = require('../util/redis');
 
 const User = require('../models/user');
 const Airport = require('../models/airport');
-// const City = require('../models/city');
+const City = require('../models/city');
 const FlightBooking = require('../models/flightBooking');
 const Booking = require('../models/booking');
 const BookingType = require('../models/bookingType');
@@ -262,7 +262,7 @@ exports.getFlights = (req, res, next) => {
         try {
             const flights = await processFlightOffers();
             await storeFlightResults(flights);
-            
+
             res.status(201).json({
                 message: 'Flight results retrieved successfully!',
                 ...flights
