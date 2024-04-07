@@ -6,26 +6,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const { redisConnect } = require('../util/redis');
 
-exports.getSignup = (req, res, next) => {
-    let message = req.flash('error');
-    console.log(message);
-    if(message.length>0) {
-        message=message[0];
-    }
-    else {
-        message=null;
-    }
-    res.render('auth/signup', {
-      path: '/signup',
-      pageTitle: 'Signup',
-      errorMessage:message,
-      oldInput: {name:'',email:'',password:'',confirmPassword:''},
-      validationErrors:[]
-    });
-};
 
 exports.postSignup = (req, res, next) => {
-    //console.log(req);
+    
     const name = req.body.name;
     const email = req.body.email;
     const password = req.body.password;
@@ -61,7 +44,6 @@ exports.postSignup = (req, res, next) => {
         return user.save();
     })
     .then(result => {
-        //console.log(result);
         res.status(201).json({
           message: 'User created successfully!',
           flag: true,

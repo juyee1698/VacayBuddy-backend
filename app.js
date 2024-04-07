@@ -9,18 +9,42 @@ const flash = require('connect-flash');
 const multer = require('multer');
 const redis = require('redis');
 const app = express();
+<<<<<<< HEAD
+=======
+const session = require( 'express-session');
+
+app.use(session({
+    secret: 'your_secret_key',
+    resave: false,
+    saveUninitialized: true
+}));
+
+>>>>>>> sightseeing-search
 // Initialize Passport and restore authentication state if available
 
 
-// const fileStorage = multer.diskStorage({
-//     destination: (req,file,cb) => {
-//         cb(null,'images')
-//     },
-//     filename: (req,file,cb) => {
-//         cb(null,new Date().getTime()+'-'+file.originalname)
-//     }
-// });
+const fileStorage = multer.diskStorage({
+    destination: (req,file,cb) => {
+        cb(null,'images')
+    },
+    filename: (req,file,cb) => {
+        cb(null,new Date().getTime()+'-'+file.originalname)
+    }
+});
 
+<<<<<<< HEAD
+=======
+const fileFilter = (req,file,cb) => {
+    if(file.mimetype==='image/png' || file.mimetype==='image/jpg' || file.mimetype==='image/jpeg') {
+        cb(null,true);
+    }
+    else {
+        cb(null,false);
+    }
+};
+
+
+>>>>>>> sightseeing-search
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
 const searchRoutes = require('./routes/search');
@@ -29,6 +53,8 @@ const o2authRoutes = require('./routes/o2auth_google')
 
 
 app.use(bodyParser.json());
+app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
+app.use('/images',express.static(path.join(__dirname,'images')));
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
