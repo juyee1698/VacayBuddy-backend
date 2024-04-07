@@ -27,7 +27,7 @@ var amadeus = new Amadeus({
 
 const transporter = nodemailer.createTransport(sendgridTransport({
     auth:{
-        api_key: process.env.sengrid_key.toString()
+        api_key: process.env.sendgrid_key.toString()
     }
 }));
 
