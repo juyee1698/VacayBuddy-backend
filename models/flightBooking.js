@@ -94,7 +94,7 @@ const flightBookingSchema = new Schema({
         required:true
     },
     travelerInfo:{
-        adult: {
+        adults: {
             type:Number
         },
         children: {
