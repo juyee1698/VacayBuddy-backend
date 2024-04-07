@@ -65,7 +65,7 @@ router.post('/flightBooking/checkout/success',
     ],
     isAuth,bookingController.postBookingFlight);
 
-router.get('/flightBooking/checkout/cancel',
+router.post('/flightBooking/checkout/cancel',
     [
         body('journeyContinuationId', 'Journey continuation ID should not be empty').not().isEmpty()
     ],

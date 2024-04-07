@@ -229,8 +229,8 @@ exports.postFlightCheckout = (req, res, next) => {
                     customerCountry: userBookingInfo.country
                 },
                 mode: 'payment',
-                success_url:req.protocol+'://'+req.get('host')+'/flightBooking/checkout/success',
-                cancel_url:req.protocol+'://'+req.get('host')+'/flightBooking/checkout/cancel'
+                success_url:'https://vacay-buddy-881f2b5b5272.herokuapp.com/bookingConfirmation',
+                cancel_url:'https://vacay-buddy-881f2b5b5272.herokuapp.com/bookingCancel'
             });
 
             return session;

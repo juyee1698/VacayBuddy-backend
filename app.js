@@ -9,8 +9,6 @@ const flash = require('connect-flash');
 const multer = require('multer');
 const redis = require('redis');
 const app = express();
-<<<<<<< HEAD
-=======
 const session = require( 'express-session');
 
 app.use(session({
@@ -19,7 +17,6 @@ app.use(session({
     saveUninitialized: true
 }));
 
->>>>>>> sightseeing-search
 // Initialize Passport and restore authentication state if available
 
 
@@ -32,8 +29,6 @@ const fileStorage = multer.diskStorage({
     }
 });
 
-<<<<<<< HEAD
-=======
 const fileFilter = (req,file,cb) => {
     if(file.mimetype==='image/png' || file.mimetype==='image/jpg' || file.mimetype==='image/jpeg') {
         cb(null,true);
@@ -44,7 +39,6 @@ const fileFilter = (req,file,cb) => {
 };
 
 
->>>>>>> sightseeing-search
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
 const searchRoutes = require('./routes/search');
