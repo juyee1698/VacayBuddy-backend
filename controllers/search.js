@@ -75,7 +75,7 @@ exports.getFlights = (req, res, next) => {
                     .then(existingAirport => {
                         if(existingAirport){
                             airportInfo["iataCode"] = existingAirport.iataCode;
-                            airportInfo["airportName"] = existingAirport.name;
+                            airportInfo["airportName"] = existingAirport.airportName;
                             airportInfo["cityName"] = existingAirport.cityName;
                             airportInfo["countryName"] = existingAirport.countryName;
                             airportInfo["cityCode"] = existingAirport.cityCode;
@@ -88,7 +88,8 @@ exports.getFlights = (req, res, next) => {
                             //Function to get airport metadata from API and save it dynamically in database if it does not already exist
                             return amadeus.referenceData.locations.get({
                                 subType: 'AIRPORT',
-                                keyword: key
+                                keyword: key,
+                                countryCode: response.result.dictionaries.locations[key].countryCode
                             })
                             .then(locationResponse => {
                                 //Save in airports collection
@@ -106,7 +107,7 @@ exports.getFlights = (req, res, next) => {
                             .then(savedAirport => {
                                 return {
                                     iataCode: savedAirport.iataCode,
-                                    airportName: savedAirport.name,
+                                    airportName: savedAirport.airportName,
                                     cityName: savedAirport.cityName,
                                     countryName: savedAirport.countryName,
                                     cityCode: savedAirport.cityCode,
@@ -261,6 +262,7 @@ exports.getFlights = (req, res, next) => {
         try {
             const flights = await processFlightOffers();
             await storeFlightResults(flights);
+
             res.status(201).json({
                 message: 'Flight results retrieved successfully!',
                 ...flights
