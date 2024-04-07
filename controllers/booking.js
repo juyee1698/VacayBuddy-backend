@@ -484,8 +484,15 @@ exports.postBookingFlight = (req, res, next) => {
             const session = await stripe.checkout.sessions.retrieve(
                 sessionId
             );
-
-            return session;
+            
+            if(session.status === 'complete') {
+                return session;
+            }
+            else {
+                const error = new Error('Payment has not been completed. Please try again!');
+                error.errorCode = 'payments_err';
+                return next(error);
+            }
         }
         catch (error) {
             error.message = 'Error in retrieving payment session information from Stripe.';
