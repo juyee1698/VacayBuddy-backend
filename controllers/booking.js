@@ -27,7 +27,7 @@ var amadeus = new Amadeus({
 
 const transporter = nodemailer.createTransport(sendgridTransport({
     auth:{
-        api_key: process.env.sengrid_key
+        api_key: process.env.sendgrid_key.toString()
     }
 }));
 
@@ -63,7 +63,7 @@ exports.bookFlight = (req, res, next) => {
         catch (error) {
             error.message = 'Error decrypting the journey continuation ID';
             error.errorCode = 'internal_server_err';
-            return next(error);
+            throw error;
         }
     }
 
@@ -76,9 +76,9 @@ exports.bookFlight = (req, res, next) => {
 
             //Check if flight booking information result has expired in Redis
             if(flightBookingInfoStr === undefined || flightBookingInfoStr == null) {
-                error = new Error('Sorry! Your search result has expired.');
+                const error = new Error('Sorry! Your search result has expired.');
                 error.errorCode = 'search_result_expiry';
-                return next(error);
+                throw error;
             }
             //Parse it in JSON format
             const flightBookingInfo = await JSON.parse(flightBookingInfoStr);
@@ -87,9 +87,14 @@ exports.bookFlight = (req, res, next) => {
 
         }
         catch (error) {
-            error.message = 'Error retrieving flight booking information from Redis';
-            error.errorCode = 'redis_err';
-            return next(error);
+            if(error.errorCode === 'search_result_expiry') {
+                throw error;
+            }
+            else {
+                error.message = 'Error retrieving flight booking information from Redis';
+                error.errorCode = 'redis_err';
+                throw error;
+            }
         }
     }
 
@@ -116,8 +121,11 @@ exports.bookFlight = (req, res, next) => {
             });
 
         } catch (error) {
-            error.message = 'Error retrieving flight booking information';
-            error.errorCode = 'internal_server_err';
+            console.log('Error retrieving flight booking information: ', error);
+            if(!error.errorCode) {
+                error.message = 'Error retrieving flight booking information';
+                error.errorCode = 'internal_server_err';
+            }
             return next(error);
         }
     })();
@@ -156,7 +164,7 @@ exports.postFlightCheckout = (req, res, next) => {
         catch (error) {
             error.message = 'Error decrypting the journey continuation ID';
             error.errorCode = 'internal_server_err';
-            return next(error);
+            throw error;
         }
         
     }
@@ -170,9 +178,9 @@ exports.postFlightCheckout = (req, res, next) => {
 
             //Check if flight booking information key has expired in Redis
             if(flightBookingInfoStr === undefined || flightBookingInfoStr == null) {
-                error = new Error('Sorry! Your search result has expired.');
+                const error = new Error('Sorry! Your search result has expired.');
                 error.errorCode = 'search_result_expiry';
-                return next(error);
+                throw error;
             }
             //Parse in JSON format
             const flightBookingInfo = await JSON.parse(flightBookingInfoStr);
@@ -181,9 +189,14 @@ exports.postFlightCheckout = (req, res, next) => {
 
         }
         catch (error) {
-            error.message = 'Error retrieving flight booking information from Redis';
-            error.errorCode = 'redis_err';
-            return next(error);
+            if(error.errorCode === 'search_result_expiry') {
+                throw error;
+            }
+            else {
+                error.message = 'Error retrieving flight booking information from Redis';
+                error.errorCode = 'redis_err';
+                throw error;
+            }
         }
     }
 
@@ -242,7 +255,7 @@ exports.postFlightCheckout = (req, res, next) => {
         catch (error) {
             error.message = 'Error in processing your payment. Please try again!';
             error.errorCode = 'payments_err';
-            return next(error);
+            throw error;
         }
     }
 
@@ -261,10 +274,9 @@ exports.postFlightCheckout = (req, res, next) => {
             return encrypted.toString();
 
         } catch (error) {
-            console.error('Error storing user booking information in Redis:', error);
             error.message = 'Error storing user booking information in Redis';
             error.errorCode = 'redis_err';
-            return next(error);
+            throw error;
         }
     }
 
@@ -293,8 +305,11 @@ exports.postFlightCheckout = (req, res, next) => {
             });
   
         } catch (error) {
-            error.message = 'Error in creating flight booking session';
-            error.errorCode = 'internal_server_err';
+            console.log('Error in creating flight booking session: ', error);
+            if(!error.errorCode) {
+                error.message = 'Error in creating flight booking session';
+                error.errorCode = 'internal_server_err';
+            }
             return next(error);
         }
     })();
@@ -334,7 +349,7 @@ exports.postBookingFlight = (req, res, next) => {
         catch(error) {
             error.message = 'Error decrypting the journey continuation ID';
             error.errorCode = 'internal_server_err';
-            return next(error);
+            throw error;
         }
     }
 
@@ -349,7 +364,7 @@ exports.postBookingFlight = (req, res, next) => {
         catch(error) {
             error.message = 'Error decrypting the user booking ID';
             error.errorCode = 'internal_server_err';
-            return next(error);
+            throw error;
         }
     }
 
@@ -362,9 +377,9 @@ exports.postBookingFlight = (req, res, next) => {
 
             //Check if flight booking information key has expired in Redis
             if(flightBookingInfoStr === undefined || flightBookingInfoStr == null) {
-                error = new Error('Sorry! Your search result has expired.');
+                const error = new Error('Sorry! Your search result has expired.');
                 error.errorCode = 'search_result_expiry';
-                return next(error);
+                throw error;
             }
 
             const flightBookingInfo = await JSON.parse(flightBookingInfoStr);
@@ -373,9 +388,14 @@ exports.postBookingFlight = (req, res, next) => {
 
         }
         catch (error) {
-            error.message = 'Error retrieving flight booking information from Redis';
-            error.errorCode = 'redis_err';
-            return next(error);
+            if(error.errorCode === 'search_result_expiry') {
+                throw error;
+            }
+            else {
+                error.message = 'Error retrieving flight booking information from Redis';
+                error.errorCode = 'redis_err';
+                throw error;
+            }
         }
     }
 
@@ -388,9 +408,9 @@ exports.postBookingFlight = (req, res, next) => {
 
             //Check if user booking information key has expired in Redis
             if(userBookingInfoStr === undefined || userBookingInfoStr == null) {
-                error = new Error('Sorry! Your search result has expired.');
+                const error = new Error('Sorry! Your search result has expired.');
                 error.errorCode = 'search_result_expiry';
-                return next(error);
+                throw error;
             }
 
             const userBookingInfo = await JSON.parse(userBookingInfoStr);
@@ -399,9 +419,14 @@ exports.postBookingFlight = (req, res, next) => {
 
         }
         catch (error) {
-            error.message = 'Error retrieving user booking details from Redis';
-            error.errorCode = 'redis_err';
-            return next(error);
+            if(error.errorCode === 'search_result_expiry') {
+                throw error;
+            }
+            else {
+                error.message = 'Error retrieving user booking details from Redis';
+                error.errorCode = 'redis_err';
+                throw error;
+            }      
         }
     }
 
@@ -473,7 +498,7 @@ exports.postBookingFlight = (req, res, next) => {
         catch (error) {
             error.message = 'Error in storing flight booking information in database';
             error.errorCode = 'database_cud_err'
-            return next(error);
+            throw error;
         }
     }
 
@@ -491,13 +516,19 @@ exports.postBookingFlight = (req, res, next) => {
             else {
                 const error = new Error('Payment has not been completed. Please try again!');
                 error.errorCode = 'payments_err';
-                return next(error);
+                error.specificMessage = 'payment_incomplete';
+                throw error;
             }
         }
         catch (error) {
-            error.message = 'Error in retrieving payment session information from Stripe.';
-            error.errorCode = 'payments_err';
-            return next(error);
+            if(error.specificMessage === 'payment_incomplete') {
+                throw error;
+            }
+            else {
+                error.message = 'Error in retrieving payment session information from Stripe.';
+                error.errorCode = 'payments_err';
+                throw error;
+            }
         }
     }
 
@@ -510,6 +541,7 @@ exports.postBookingFlight = (req, res, next) => {
             const currency = paymentSession.currency.toUpperCase();
             const currencyInfo = await Currency.findOne({currencyType:currency});
             const currencyId = currencyInfo._id;
+            const today = new Date();
 
             const userInfo = {
                 userName: userBookingInfo.name,
@@ -522,27 +554,42 @@ exports.postBookingFlight = (req, res, next) => {
                 userPhoneNo: userBookingInfo.phoneno
             }
 
-            const payment = new Payment({
-                userId: userId,
-                bookingTypeId: bookingTypeId,
-                paymentDate: paymentSession.created,
-                paymentAmount: (paymentSession.amount_total)/100,
-                currencyId: currencyId,
-                paymentStatus: paymentSession.status,
-                paymentMethodTypes: paymentSession.payment_method_types,
-                userBookingInfo: userInfo,
-                stripeTransactionId: userBookingInfo.sessionId
+            const existingPayment = await Payment.findOne({stripeTransactionId:userBookingInfo.sessionId});
 
-            })
-            payment.save();
-
-            return payment._id;
+            if(existingPayment) {
+                const error = new Error('Error in storing user payment information in database. The payment information already exists.');
+                error.errorCode = 'database_cud_err';
+                error.specificMessage = 'payment_duplicate';
+                throw error;
+            }
+            else {
+                const payment = new Payment({
+                    userId: userId,
+                    bookingTypeId: bookingTypeId,
+                    paymentDate: today,
+                    paymentAmount: (paymentSession.amount_total)/100,
+                    currencyId: currencyId,
+                    paymentStatus: paymentSession.status,
+                    paymentMethodTypes: paymentSession.payment_method_types,
+                    userBookingInfo: userInfo,
+                    stripeTransactionId: userBookingInfo.sessionId
+    
+                })
+                payment.save();
+    
+                return payment._id;
+            }
 
            }
         catch (error) {
-            error.message = 'Error in storing user payment information in database';
-            error.errorCode = 'database_cud_err'
-            return next(error);
+            if(error.specificMessage === 'payment_duplicate') {
+                throw error;
+            }
+            else {
+                error.message = 'Error in storing user payment information in database';
+                error.errorCode = 'database_cud_err'
+                throw error;
+            }
         }
     }
 
@@ -569,7 +616,7 @@ exports.postBookingFlight = (req, res, next) => {
         catch (error) {
             error.message = 'Error in storing user booking information in database';
             error.errorCode = 'database_cud_err'
-            return next(error);
+            throw error;
         }
     }
 
@@ -848,10 +895,9 @@ exports.postBookingFlight = (req, res, next) => {
             
         }
         catch(error) {
-            console.log(error);
             error.message = 'Error in sending booking confirmation on email.';
             error.errorCode = 'internal_server_err'
-            return next(error);
+            throw error;
         }
     }
 
@@ -871,9 +917,9 @@ exports.postBookingFlight = (req, res, next) => {
 
             const userPaymentSession = await getStripePaymentInfo(userBookingConfirmationInfo);
 
-            const flightBookingId = await storeFlightBookingConfirmationInfo(flightBookingConfirmationInfo);
-
             const paymentId = await saveUserPaymentDetails(flightBookingConfirmationInfo, userBookingConfirmationInfo, userPaymentSession);
+
+            const flightBookingId = await storeFlightBookingConfirmationInfo(flightBookingConfirmationInfo);
 
             const bookingId = await storeBooking(flightBookingId, paymentId, userPaymentSession, flightBookingConfirmationInfo);
 
@@ -885,9 +931,11 @@ exports.postBookingFlight = (req, res, next) => {
             });
             
         } catch (error) {
-            console.log(error);
-            error.message = 'Error in completing flight booking. Please try again later!';
-            error.errorCode = 'internal_server_err';
+            console.log('Error in completing flight booking: ',error);
+            if(!error.errorCode) {
+                error.message = 'Error in completing flight booking. Please try again later!';
+                error.errorCode = 'internal_server_err';
+            }
             return next(error);
         }
     })();
@@ -896,6 +944,192 @@ exports.postBookingFlight = (req, res, next) => {
 //Controller function to get booking history
 exports.getBookings = (req, res, next) => {
     
+    const userId = req.userId;
+
+    async function getUserBookings(userId) {
+    
+        try {
+            //Get flight booking type ID
+            const bookingType = await BookingType.findOne({type:'Flight'});
+            const bookingTypeId = bookingType._id;
+
+            //Get flight bookings of user
+            const userBookings = await Booking.find({userId: userId, bookingTypeId: bookingTypeId})
+
+            const promises = [];
+            const paymentPromises = [];
+
+            //Get flight and payment information of all the bookings
+            userBookings.forEach(booking => {
+
+                //Promise chain for getting flight booking information
+                promises.push(
+                    FlightBooking.findOne({_id: booking.flightReservationId})
+                    .then(flight=> {
+
+                        const airportMetadata = JSON.parse(flight.airportMetadata);
+                        const airlineCarrierMetadata = JSON.parse(flight.airlineCarrierMetadata);
+
+                        const flightInfo =  {
+                            bookingId: booking._id,
+                            bookingDate: booking.bookingDate,
+                            bookingStatus: booking.status,
+                            originLocation: flight.originLocation,
+                            destinationLocation: flight.destinationLocation,
+                            originAirportName: airportMetadata.find(metadata => 
+                                metadata.iataCode === flight.originLocation)?.airportName,
+                            destinationAirportName: airportMetadata.find(metadata => 
+                                metadata.iataCode === flight.destinationLocation)?.airportName,
+                            originCityName: airportMetadata.find(metadata => 
+                                metadata.iataCode === flight.originLocation)?.cityName,
+                            destinationCityName: airportMetadata.find(metadata => 
+                                metadata.iataCode === flight.destinationLocation)?.cityName,
+                            destinationTravelSegments: flight.destinationTravelSegments.map(segment => {
+                                        return {
+                                            departure: {
+                                                departureAirport: airportMetadata.find(metadata => 
+                                                    metadata.iataCode === segment.departure.iataCode)?.airportName,
+                                                iataCode: segment.departure.iataCode,
+                                                terminal: segment.departure.terminal,
+                                                at: segment.departure.at
+                                            },
+                                            arrival: {
+                                                arrivalAirport: airportMetadata.find(metadata => 
+                                                    metadata.iataCode === segment.arrival.iataCode)?.airportName,
+                                                iataCode: segment.arrival.iataCode,
+                                                terminal: segment.arrival.terminal,
+                                                at: segment.arrival.at
+                                            },
+                                            carrierCode: segment.carrierCode.at,
+                                            airline: airlineCarrierMetadata[segment.carrierCode],
+                                            aircraftCode: segment.aircraftCode,
+                                            duration: segment.duration
+                                        }
+                            }),
+                            returnTravelSegments: flight.returnTravelSegments ? flight.returnTravelSegments.map(segment => {
+                                return {
+                                    departure: {
+                                        departureAirport: airportMetadata.find(metadata => 
+                                            metadata.iataCode === segment.departure.iataCode)?.airportName,
+                                        iataCode: segment.departure.iataCode,
+                                        terminal: segment.departure.terminal,
+                                        at: segment.departure.at
+                                    },
+                                    arrival: {
+                                        arrivalAirport: airportMetadata.find(metadata => 
+                                            metadata.iataCode === segment.arrival.iataCode)?.airportName,
+                                        iataCode: segment.arrival.iataCode,
+                                        terminal: segment.arrival.terminal,
+                                        at: segment.arrival.at
+                                    },
+                                    carrierCode: segment.carrierCode.at,
+                                    airline: airlineCarrierMetadata[segment.carrierCode],
+                                    aircraftCode: segment.aircraftCode,
+                                    duration: segment.duration
+                                }
+                            }) : undefined,
+                            duration: flight.duration,
+                            cabin: flight.cabin,
+                            price: flight.price
+                        };
+
+                        return flightInfo;
+                    })
+                    .catch(err => {
+                        err.message = "Error in retrieving flight booking information";
+                        err.errorCode = 'database_read_err';
+                        err.specificMessage = 'flight_booking_read_err';
+                        throw err;
+                    })
+                );
+
+                //Promise chain for getting booking payment information
+                paymentPromises.push(
+                    Payment.findOne({_id: booking.paymentId})
+                    .then(payment => {
+
+                        return Currency.findOne({_id:payment.currencyId})
+                            .then(currency => {
+                                const paymentInfo = {
+                                    bookingId: booking._id,
+                                    paymentAmount: payment.paymentAmount,
+                                    currency: currency.symbol,
+                                    userBookingInfo: payment.userBookingInfo,
+                                    paymentMethodTypes: payment.paymentMethodTypes
+                                };
+                                return paymentInfo;
+                            })
+                            .catch(err => {
+                                err.message = "Error in retrieving currency information";
+                                err.errorCode = 'database_read_err';
+                                err.specificMessage = 'currency_read_err';
+                                throw err;
+                        });
+
+                    })
+                    .catch(err => {
+                        err.message = "Error in retrieving payment information";
+                        err.errorCode = 'database_read_err';
+                        err.specificMessage = 'payment_read_err';
+                        throw err;
+                    })
+                );
+                
+            });
+
+            //Run all the promises to get array of flight bookings
+            const flightsBookingInfo = (await Promise.all(promises)).filter(info => info !== null);
+
+            //Run all the promises to get array of payment details
+            const bookingPaymentsInfo = (await Promise.all(paymentPromises)).filter(info => info !== null);
+            
+            //Merge above two to get final booking related information
+            const bookingInfo = flightsBookingInfo.map(flightBooking => {
+
+                const paymentInfo = bookingPaymentsInfo.find(payment => {
+                    return payment.bookingId.toString() === flightBooking.bookingId.toString();
+                });
+
+                const mergedInfo = {
+                    ...flightBooking,
+                    ...paymentInfo
+                }
+
+                if(mergedInfo!== undefined) {
+                    return mergedInfo;
+                }
+            });
+            
+            return bookingInfo;
+        }
+        catch (error) {
+            if(!error.specificMessage) {
+                error.message = "Error in retrieving flight/payment information of past user bookings";
+                error.errorCode = 'database_read_err';
+            }
+            throw error;
+        }
+    }
+
+    //Immediately invoked function expression
+    (async () => {
+        try {
+            const bookingInfo = await getUserBookings(userId);
+
+            res.status(201).json({
+                message: 'Flight Booking history has been successfully retrieved!',
+                bookingInfo: bookingInfo
+            });
+        }
+        catch(error) {
+            console.log('Error in getting user flight booking history', error);
+            if(!error.errorCode) {
+                error.message = 'Error in getting user flight booking history';
+                error.errorCode = 'internal_server_err';
+            }
+            return next(error);
+        }
+    })();
 };
 
 

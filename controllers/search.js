@@ -150,7 +150,7 @@ exports.getFlights = (req, res, next) => {
                     .catch(err => {
                         err.message = "Error processing airport information in database";
                         err.errorCode = "database_read_err";
-                        return next(err);
+                        throw err;
                     })
                     
                 );
@@ -223,17 +223,21 @@ exports.getFlights = (req, res, next) => {
 
         }
         catch (err) {
-            console.error('Error processing flight offers:', err);
-            const error = new Error('Error processing flight offers');
-            error.statusCode = err.description[0].status;
-            error.message = 'Error processing flight offers: '+ err.description[0].title;
-            error.errorCode = 'client_err';
-            error.data = {
-                msg: err.description[0].detail,
-                path: err.description[0].source.pointer,
-                example: err.description[0].source.example
+            if(err.errorCode === 'database_read_err') {
+                throw err;
             }
-            return next(error);
+            else {
+                const error = new Error('Error processing flight offers');
+                error.statusCode = err.description[0].status;
+                error.message = 'Error processing flight offers: '+ err.description[0].title;
+                error.errorCode = 'client_err';
+                error.data = {
+                    msg: err.description[0].detail,
+                    path: err.description[0].source.pointer,
+                    example: err.description[0].source.example
+                }
+                throw error;
+            }  
         }
     }
 
@@ -254,10 +258,9 @@ exports.getFlights = (req, res, next) => {
 
             return true;
         } catch (error) {
-            console.error('Error storing flight results in Redis:', error);
             error.message = 'Error storing flight results in Redis';
             error.errorCode = 'redis_err';
-            return next(error);
+            throw error;
         }
     }
 
@@ -271,8 +274,11 @@ exports.getFlights = (req, res, next) => {
                 ...flights
             });
         } catch (error) {
-            error.message = 'Error retrieving flight search results';
-            error.errorCode = 'internal_server_err';
+            console.error('Error retrieving flight search results:', error);
+            if(!error.errorCode) {
+                error.message = 'Error retrieving flight search results';
+                error.errorCode = 'internal_server_err';
+            }
             return next(error);
         }
     })();
@@ -316,9 +322,9 @@ exports.selectFlight = (req, res, next) => {
 
             //Check if flight search result has expired in Redis
             if(flightSearchResultStr === undefined || flightSearchResultStr == null) {
-                error = new Error('Sorry! Your search result has expired.');
+                const error = new Error('Sorry! Your search result has expired.');
                 error.errorCode = 'search_result_expiry';
-                return next(error);
+                throw error;
             }
 
             //Parse flight search results in JSON format
@@ -328,9 +334,15 @@ exports.selectFlight = (req, res, next) => {
 
         } catch (error) {
             console.error('Error retrieving flight search results from Redis:', error);
-            error.message = 'Error retrieving flight search results from Redis';
-            error.errorCode = 'redis_err';
-            return next(error);
+
+            if(error.errorCode === 'search_result_expiry') {
+                throw error;
+            }
+            else {
+                error.message = 'Error retrieving flight search results from Redis';
+                error.errorCode = 'redis_err';
+                throw error;
+            }
         }
     }
 
@@ -345,7 +357,7 @@ exports.selectFlight = (req, res, next) => {
             console.error('Error processing flight information in Redis:', error);
             error.message = 'Error processing flight search information in Redis';
             error.errorCode = 'redis_err';
-            return next(error);
+            throw error;
         }
     }
 
@@ -367,10 +379,9 @@ exports.selectFlight = (req, res, next) => {
             return encrypted;
 
         } catch (error) {
-            console.error('Error storing flight booking information in Redis:', error);
             error.message = 'Error processing flight search information in Redis';
             error.errorCode = 'redis_err';
-            return next(error);
+            throw error;
         }
     }
 
@@ -407,8 +418,11 @@ exports.selectFlight = (req, res, next) => {
             });
 
         } catch (error) {
-            error.message = 'Error retrieving flight search results';
-            error.errorCode = 'internal_server_err';
+            console.log('Error retrieving flight search results: ', error);
+            if(!error.errorCode) {
+                error.message = 'Error retrieving flight search results';
+                error.errorCode = 'internal_server_err';
+            }
             return next(error);
         }
     })();
@@ -505,7 +519,7 @@ exports.getSightSeeingActivities = (req, res, next) => {
         catch(error) {
             error.message = "Error processing cities information in database";
             error.errorCode = "database_read_err";
-            return next(error);
+            throw error;
         }
     }
 
