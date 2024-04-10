@@ -7,6 +7,7 @@ const { redisConnect } = require('../util/redis');
 const User = require('../models/user');
 const Airport = require('../models/airport');
 const City = require('../models/city');
+const CityMetadata = require('../models/cityMetadata');
 const FlightBooking = require('../models/flightBooking');
 const Booking = require('../models/booking');
 const BookingType = require('../models/bookingType');
@@ -453,6 +454,36 @@ exports.getAirportMetadata = (req, res, next) => {
 
         } catch (error) {
             error.message = 'Error retrieving airports information';
+            error.errorCode = 'internal_server_err';
+            return next(error);
+        }
+    })();
+}
+
+exports.getCityMetadata = (req, res, next) => {
+
+    async function getCityData() {
+        try {
+            const cityMetadata = await CityMetadata.find();
+            return cityMetadata;
+        }
+        catch(err) {
+            throw err;
+        }
+    }
+
+
+    (async () => {
+        try {
+            const cityMetadata = await getCityData();
+
+            res.status(201).json({
+                message: 'Cities information retrieved successfully!',
+                cityMetadata: cityMetadata
+            });
+
+        } catch (error) {
+            error.message = 'Error retrieving cities information';
             error.errorCode = 'internal_server_err';
             return next(error);
         }

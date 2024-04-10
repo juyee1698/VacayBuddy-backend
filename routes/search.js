@@ -63,6 +63,8 @@ router.post('/flightSearch/selectFlight',
 //Get airport metadata 
 router.post('/airportMetadata', searchController.getAirportMetadata);
 
+router.post('/cityMetadata', searchController.getCityMetadata);
+
 router.post('/sightSearch',
     isAuth, 
     searchController.getSightSeeingActivities);
