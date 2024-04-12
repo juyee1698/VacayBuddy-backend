@@ -61,6 +61,7 @@ exports.bookFlight = (req, res, next) => {
             };
         }
         catch (error) {
+            console.log('Error decrypting the journey continuation ID: ', error)
             error.message = 'Error decrypting the journey continuation ID';
             error.errorCode = 'internal_server_err';
             throw error;
@@ -91,6 +92,7 @@ exports.bookFlight = (req, res, next) => {
                 throw error;
             }
             else {
+                console.log('Error retrieving flight booking information from Redis: ', error);
                 error.message = 'Error retrieving flight booking information from Redis';
                 error.errorCode = 'redis_err';
                 throw error;
@@ -121,7 +123,6 @@ exports.bookFlight = (req, res, next) => {
             });
 
         } catch (error) {
-            console.log('Error retrieving flight booking information: ', error);
             if(!error.errorCode) {
                 error.message = 'Error retrieving flight booking information';
                 error.errorCode = 'internal_server_err';
@@ -162,6 +163,7 @@ exports.postFlightCheckout = (req, res, next) => {
             };
         }
         catch (error) {
+            console.log('Error decrypting the journey continuation ID: ', error);
             error.message = 'Error decrypting the journey continuation ID';
             error.errorCode = 'internal_server_err';
             throw error;
@@ -193,6 +195,7 @@ exports.postFlightCheckout = (req, res, next) => {
                 throw error;
             }
             else {
+                console.log('Error retrieving flight booking information from Redis: ', error);
                 error.message = 'Error retrieving flight booking information from Redis';
                 error.errorCode = 'redis_err';
                 throw error;
@@ -253,6 +256,7 @@ exports.postFlightCheckout = (req, res, next) => {
             return session;
         }
         catch (error) {
+            console.log('Error in processing the payment: ', error);
             error.message = 'Error in processing your payment. Please try again!';
             error.errorCode = 'payments_err';
             throw error;
@@ -274,6 +278,7 @@ exports.postFlightCheckout = (req, res, next) => {
             return encrypted.toString();
 
         } catch (error) {
+            console.log('Error storing user booking information in Redis: ', error);
             error.message = 'Error storing user booking information in Redis';
             error.errorCode = 'redis_err';
             throw error;
@@ -347,6 +352,7 @@ exports.postBookingFlight = (req, res, next) => {
             };
         }
         catch(error) {
+            console.log('Error decrypting the journey continuation ID: ', error);
             error.message = 'Error decrypting the journey continuation ID';
             error.errorCode = 'internal_server_err';
             throw error;
@@ -362,6 +368,7 @@ exports.postBookingFlight = (req, res, next) => {
             return decryptedKey;
         }
         catch(error) {
+            console.log('Error decrypting the user booking ID: ', error);
             error.message = 'Error decrypting the user booking ID';
             error.errorCode = 'internal_server_err';
             throw error;
@@ -392,6 +399,7 @@ exports.postBookingFlight = (req, res, next) => {
                 throw error;
             }
             else {
+                console.log('Error retrieving flight booking information from Redis: ', error);
                 error.message = 'Error retrieving flight booking information from Redis';
                 error.errorCode = 'redis_err';
                 throw error;
@@ -423,6 +431,7 @@ exports.postBookingFlight = (req, res, next) => {
                 throw error;
             }
             else {
+                console.log('Error retrieving user booking details from Redis: ', error);
                 error.message = 'Error retrieving user booking details from Redis';
                 error.errorCode = 'redis_err';
                 throw error;
@@ -496,6 +505,7 @@ exports.postBookingFlight = (req, res, next) => {
             return flightBooking._id;
         }
         catch (error) {
+            console.log('Error in storing flight booking information in database: ', error);
             error.message = 'Error in storing flight booking information in database';
             error.errorCode = 'database_cud_err'
             throw error;
@@ -525,6 +535,7 @@ exports.postBookingFlight = (req, res, next) => {
                 throw error;
             }
             else {
+                console.log('Error in retrieving payment session information from Stripe: ', error);
                 error.message = 'Error in retrieving payment session information from Stripe.';
                 error.errorCode = 'payments_err';
                 throw error;
@@ -586,6 +597,7 @@ exports.postBookingFlight = (req, res, next) => {
                 throw error;
             }
             else {
+                console.log('Error in storing user payment information in database: ', error);
                 error.message = 'Error in storing user payment information in database';
                 error.errorCode = 'database_cud_err'
                 throw error;
@@ -614,6 +626,7 @@ exports.postBookingFlight = (req, res, next) => {
             return booking._id;
         }
         catch (error) {
+            console.log('Error in storing user booking information in database: ', error);
             error.message = 'Error in storing user booking information in database';
             error.errorCode = 'database_cud_err'
             throw error;
@@ -895,6 +908,7 @@ exports.postBookingFlight = (req, res, next) => {
             
         }
         catch(error) {
+            console.log('Error in sending booking confirmation on email: ', error);
             error.message = 'Error in sending booking confirmation on email.';
             error.errorCode = 'internal_server_err'
             throw error;
@@ -931,7 +945,7 @@ exports.postBookingFlight = (req, res, next) => {
             });
             
         } catch (error) {
-            console.log('Error in completing flight booking: ',error);
+            console.log('Error in completing flight booking: ', error);
             if(!error.errorCode) {
                 error.message = 'Error in completing flight booking. Please try again later!';
                 error.errorCode = 'internal_server_err';
@@ -1036,6 +1050,7 @@ exports.getBookings = (req, res, next) => {
                         return flightInfo;
                     })
                     .catch(err => {
+                        console.log('Error in retrieving flight booking information: ', err);
                         err.message = "Error in retrieving flight booking information";
                         err.errorCode = 'database_read_err';
                         err.specificMessage = 'flight_booking_read_err';
@@ -1060,6 +1075,7 @@ exports.getBookings = (req, res, next) => {
                                 return paymentInfo;
                             })
                             .catch(err => {
+                                console.log("Error in retrieving currency information: ", err);
                                 err.message = "Error in retrieving currency information";
                                 err.errorCode = 'database_read_err';
                                 err.specificMessage = 'currency_read_err';
@@ -1068,6 +1084,7 @@ exports.getBookings = (req, res, next) => {
 
                     })
                     .catch(err => {
+                        console.log("Error in retrieving payment information: ", error);
                         err.message = "Error in retrieving payment information";
                         err.errorCode = 'database_read_err';
                         err.specificMessage = 'payment_read_err';

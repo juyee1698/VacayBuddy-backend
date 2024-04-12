@@ -260,6 +260,7 @@ exports.getFlights = (req, res, next) => {
 
             return true;
         } catch (error) {
+            console.log('Error storing flight results in Redis: ', error);
             error.message = 'Error storing flight results in Redis';
             error.errorCode = 'redis_err';
             throw error;
@@ -532,11 +533,12 @@ exports.getSightSeeingActivities = (req, res, next) => {
                 });
 
                 const locations = citiesResponse.data;
+                let cityDetails;
 
                 locations.forEach(location => {
                     if (location.iataCode === iataCode) {
                         //Create city object to store
-                        const cityDetails = new City({
+                        cityDetails = new City({
                             iataCode:location.iataCode,
                             name:location.name,
                             countryCode:location.address.countryCode,
@@ -550,16 +552,17 @@ exports.getSightSeeingActivities = (req, res, next) => {
                             subType:location.subType
                         });
                         cityDetails.save();
-
-                        return cityDetails;
                     }
                 });
+                
+                return cityDetails;
             }
 
         }
         catch(error) {
-            error.message = "Error processing cities information in database";
-            error.errorCode = "database_read_err";
+            console.log('Error processing cities information in database: ', error);
+            error.message = 'Error processing cities information in database';
+            error.errorCode = 'database_read_err';
             throw error;
         }
     }
@@ -618,7 +621,7 @@ exports.getSightSeeingActivities = (req, res, next) => {
             return encrypted;
         }
         catch (error) {
-            console.error('Error storing sightseeing search information in Redis:', error);
+            console.log('Error storing sightseeing search information in Redis:', error);
             error.message = 'Error storing sightseeing search information in Redis';
             error.errorCode = 'redis_err';
         }
@@ -847,15 +850,42 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const client = await redisConnect;
             const key = 'sightseeingdetails_' + userId + '_' + placeId.toString() + '_' + now;
             
-            await client.set(key, JSON.stringify());
+            const placeFullDetails = {
+                place_id: placeDetails.place_id,
+                business_status: placeDetails.business_status,
+                geometry: placeDetails.geometry,
+                icon: placeDetails.icon,
+                icon_background_color: placeDetails.icon_background_color,
+                icon_mask_base_uri: placeDetails.icon_mask_base_uri,
+                name: placeDetails.name,
+                opening_hours: placeDetails.opening_hours,
+                photos: placeDetails.photos,
+                plus_code: placeDetails.plus_code,
+                rating: placeDetails.rating,
+                reference: placeDetails.reference,
+                scope: placeDetails.scope,
+                types: placeDetails.types,
+                user_ratings_total: placeDetails.user_ratings_total,
+                vicinity: placeDetails.vicinity,
+                formatted_address: placeAdditionalDetails.formatted_address,
+                formatted_phone_number: placeAdditionalDetails.formatted_phone_number,
+                additionalPhotos: placeAdditionalDetails.photos,
+                url: placeAdditionalDetails.url
+            };
+
+            await client.set(key, JSON.stringify(placeFullDetails));
             await client.expire(key, 900);
             console.log('Sightseeing detailed information stored in Redis:', key);
 
             var encrypted = CryptoJS.AES.encrypt(key, "VacayBuddy Sightseeing Search");
 
-            return encrypted;
+            return {
+                encrypted,
+                placeFullDetails
+            }
 
         } catch (error) {
+            console.log('Error storing sightseeing information in Redis: ',error);
             error.message = 'Error storing sightseeing information in Redis';
             error.errorCode = 'redis_err';
             throw error;
@@ -893,15 +923,15 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             await storePhotosMetadata(placeId);
 
             //Store sightseeing details temporarily in Redis
-            const detailedSearchContinuationId = await storeSightseeingDetails(placeDetails, placeAdditionalDetails);
-            
+            const response = await storeSightseeingDetails(placeDetails, placeAdditionalDetails);
+            const detailedSearchContinuationId = response.encrypted.toString();
+            const placeFullDetails = response.placeFullDetails;
 
             res.status(201).json({
                 message: 'Sightseeing detailed information retrieved successfully!',
-                detailedSearchContinuationId: detailedSearchContinuationId.toString(),
+                detailedSearchContinuationId: detailedSearchContinuationId,
                 searchContinuationId: searchContinuationId,
-                placeDetails: placeDetails,
-                placeAdditionalDetails: placeAdditionalDetails
+                placeFullDetails: placeFullDetails
             });
 
         } catch (error) {
@@ -911,6 +941,3 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         }
     })();
 };
-
-
-

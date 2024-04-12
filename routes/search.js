@@ -66,10 +66,32 @@ router.post('/airportMetadata', searchController.getAirportMetadata);
 router.post('/cityMetadata', searchController.getCityMetadata);
 
 router.post('/sightSearch',
+    [
+        body('city')
+        .notEmpty().withMessage('City cannot be empty')
+        .isString().withMessage('Invalid input, city should be a valid string')
+        .isLength({min: 1, max: 50}).withMessage('Invalid input, city should be a minimum of 1 character and maximum of 50 characters'),
+        body('countryCode')
+        .notEmpty().withMessage('Country code cannot be empty')
+        .isString().withMessage('Invalid input, country code should be a valid string')
+        .isLength({min: 2, max: 2}).withMessage('Invalid input, country code should be only 2 characters'),
+        body('iataCode')
+        .notEmpty().withMessage('IATA code cannot be empty')
+        .isString().withMessage('Invalid input, IATA code should be a valid string')
+        .isLength({min: 3, max: 3}).withMessage('Invalid input, IATA code should be only 3 characters'),
+        body('type')
+        .notEmpty().withMessage('Sightseeing type cannot be empty')
+        .isString().withMessage('Invalid input, sightseeing type should be a valid string')
+        .isLength({min: 3, max: 20}).withMessage('Invalid input, type should be a minimum of 3 characters and maximum of 20 characters')
+    ],
     isAuth, 
     searchController.getSightSeeingActivities);
 
 router.post('/sightSearch/selectSight',
+    [
+        body('searchContinuationId', 'Search continuation ID should not be empty').not().isEmpty(),
+        body('placeId', 'Place ID should not be empty').not().isEmpty(),
+    ],
     isAuth, 
     searchController.selectSightSeeingActivity);
 
