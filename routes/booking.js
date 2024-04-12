@@ -57,7 +57,7 @@ router.post('/flightBooking/checkout',
     ],
     isAuth, bookingController.postFlightCheckout);
 
-//
+//Post successful payment session - Redirected to booking confirmation page
 router.post('/flightBooking/checkout/success',
     [
         body('journeyContinuationId', 'Journey continuation ID should not be empty').not().isEmpty(),
@@ -65,11 +65,16 @@ router.post('/flightBooking/checkout/success',
     ],
     isAuth,bookingController.postBookingFlight);
 
-router.get('/flightBooking/checkout/cancel',
+//Post unsuccessful payment session - Redirected to booking information page
+router.post('/flightBooking/checkout/cancel',
     [
         body('journeyContinuationId', 'Journey continuation ID should not be empty').not().isEmpty()
     ],
     isAuth,bookingController.bookFlight);
+
+//Get user's past flight booking history
+router.post('/flightBookingHistory',
+    isAuth,bookingController.getBookings);
 
 
 module.exports = router; 
