@@ -4,39 +4,55 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-//const MongoDBStore = require('connect-mongodb-session')(session);
 const csrf = require('csurf');
 const flash = require('connect-flash');
 const multer = require('multer');
 const redis = require('redis');
-
+const passport = require('passport');
+const cookieSession = require('cookie-session');
 const app = express();
+const session = require( 'express-session');
+
+app.use(session({
+    secret: 'your_secret_key',
+    resave: false,
+    saveUninitialized: true
+}));
+
+// Initialize Passport and restore authentication state if available
+app.use(passport.initialize());
+app.use(passport.session());
 
 
-// const fileStorage = multer.diskStorage({
-//     destination: (req,file,cb) => {
-//         cb(null,'images')
-//     },
-//     filename: (req,file,cb) => {
-//         cb(null,new Date().getTime()+'-'+file.originalname)
-//     }
-// });
+const fileStorage = multer.diskStorage({
+    destination: (req,file,cb) => {
+        cb(null,'images')
+    },
+    filename: (req,file,cb) => {
+        cb(null,new Date().getTime()+'-'+file.originalname)
+    }
+});
 
-// const fileFilter = (req,file,cb) => {
-//     if(file.mimetype==='image/png' || file.mimetype==='image/jpg' || file.mimetype==='image/jpeg') {
-//         cb(null,true);
-//     }
-//     else {
-//         cb(null,false);
-//     }
-// };
+const fileFilter = (req,file,cb) => {
+    if(file.mimetype==='image/png' || file.mimetype==='image/jpg' || file.mimetype==='image/jpeg') {
+        cb(null,true);
+    }
+    else {
+        cb(null,false);
+    }
+};
+
 
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
+const searchRoutes = require('./routes/search');
 const authRoutes = require('./routes/auth');
+const o2authRoutes = require('./routes/oauth2')
 
-//app.use(bodyParser.urlencoded({extended: true}));
+
 app.use(bodyParser.json());
+app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
+app.use('/images',express.static(path.join(__dirname,'images')));
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -46,29 +62,22 @@ app.use((req, res, next) => {
 });
 
 // app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
-// app.use(express.static(path.join(__dirname,'public')));
-// app.use('/images',express.static(path.join(__dirname,'images')));
+app.use(express.static(path.join(__dirname,'public')));
+//app.use('/images',express.static(path.join(__dirname,'images')));
 
 app.use('/admin',adminRoutes);
-app.use(bookingRoutes);
 app.use('/auth', authRoutes);
-
+app.use(bookingRoutes);
+app.use(searchRoutes);
+app.use('/o2auth', o2authRoutes);
 
 app.use((error, req, res, next) => {
     const status = error.statusCode || 500;
+    const errorCode = error.errorCode;
     const message = error.message;
     const data = error.data;
-    res.status(status).json({ message: message, data: data });
+    res.status(status).json({ statusCode: status, message: message, data: data, errorCode: errorCode });
 });
-
-// redisClient.connect()
-// .then(result => {
-//     app.use(redisClient);
-//     console.log('Connected to redis');
-// })
-// .catch(err => {
-//     console.log(err);
-// });
 
 mongoose.connect(process.env.mongoose_connect)
 .then(result => {

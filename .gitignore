@@ -1,2 +1,5 @@
 .env
 node_modules
+play.js
+public
+images

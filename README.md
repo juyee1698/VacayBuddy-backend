@@ -64,12 +64,12 @@ The features of this booking platform include:
 
 ### TechStack
 
-Backend: Node.js, Express.js
-Frontend: HTML, CSS, Javascript, JQuery, Bootstrap, React.js
-Database: MongoDB, AWS S3 for Images
-Containerization: Docker, Kubernetes
-Caching and Optimization: Redis, CDN, Sessions & Cookies
-Miscellaneous: REST APIs, Stripe API for Payment Gateway, SendGrid for notifications
+1. Backend: Node.js, Express.js
+2. Frontend: HTML, CSS, Javascript, JQuery, Bootstrap, React.js
+3. Database: MongoDB, AWS S3 for Images
+4. Containerization: Docker, Kubernetes
+5. Caching and Optimization: Redis, CDN, Sessions & Cookies
+6. Miscellaneous: REST APIs, Stripe API for Payment Gateway, SendGrid for notifications
 
 
 ### Installation
@@ -87,10 +87,12 @@ Before you begin, ensure you have met the following requirements:
 
 #### Instructions
 
+## Using Local System
+
 1. Clone the repository to your local machine using Git:
 
 ```bash
-git clone https://github.com/juyee1698/VacayBuddy.git
+git clone https://github.com/juyee1698/VacayBuddy-backend.git
 ```
 
 2. Navigate to the project directory and open the project in Visual Studio (or code editor of your choice). 
@@ -116,7 +118,24 @@ npm start
 ```
 
 Expected result on terminal:
-[ nodemon ] starting `node app.js`
-Connected to redis from here
-Connected
+
+![npm start Expected Result](images/start-terminal-result.png)
+
+
+## Using Docker 
+
+1.Build Image
+```bash
+docker build -t <img-name> -f Dockerfile .
+```
+2. Run Image
+```bash
+docker run -p 8080:8080 <img-name> 
+# run in backgorund
+docker run -p 8080:8080 -d <img-name>
+```
+3. Login to container to debug
+```bash
+docker exec -it <container-id> /bin/sh
+```
 
