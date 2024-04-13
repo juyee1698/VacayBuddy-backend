@@ -21,8 +21,8 @@ const { decrypt } = require('dotenv');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const axios = require('axios');
 const { ConnectionStates } = require('mongoose');
+const stockPhotoPath = './images/stock_photo.jpg';
 
 var amadeus = new Amadeus({
     clientId: process.env.amadeus_clientid,
@@ -628,6 +628,57 @@ exports.getSightSeeingActivities = (req, res, next) => {
         }
     }
 
+    //Function to get sightseeing place's primary photo and save it locally
+    async function getPlacePhoto(photo, placeId) {
+        try {
+            const directory = path.join(__dirname, `../images/${placeId}`);
+
+            //Check if directory of that place exists 
+            if (!fs.existsSync(directory)) {
+                fs.mkdirSync(directory);
+                const fileName = `primary.jpg`;
+                const filePath = path.join(__dirname, `../images/${placeId}`, fileName);
+
+                if(photo) {
+                    const primary_photo_reference = photo.photo_reference;
+                    const placePrimaryPhoto = await axios.get(
+                        `https://maps.googleapis.com/maps/api/place/photo?maxheight=400&maxwidth=500&photo_reference=${primary_photo_reference}&key=${places_nearbysearch_api}`,
+                        { responseType: 'stream' }
+                    ); 
+                    
+                    // Create a writable stream to save the photo
+                    const writer = fs.createWriteStream(filePath);
+
+                    // Pipe the photo stream to the writable stream
+                    placePrimaryPhoto.data.pipe(writer);
+
+                    // Return a promise to indicate when the photo is saved successfully
+                    return new Promise((resolve, reject) => {
+                        writer.on('finish', resolve);
+                        writer.on('error', reject);
+                    });
+                }
+                else {
+                    const reader = fs.createReadStream(stockPhotoPath);
+                    const writer = fs.createWriteStream(filePath);
+                    reader.pipe(writer);
+                    return new Promise((resolve, reject) => {
+                        reader.on('error', reject);
+                        writer.on('error', reject);
+                        writer.on('finish', resolve);
+                    });
+                }
+            }
+
+        }
+        catch(error) {
+            console.log('Error in retrieving place primary photo from Google Places API: ', error);
+            error.message = 'Error in retrieving place primary photo from Google Places API';
+            error.errorCode = 'api_response_err';
+            throw error;
+        }
+    }
+
     //Immediately invoked function expression - run all the above modular functions
     (async () => {
         try {
@@ -636,6 +687,18 @@ exports.getSightSeeingActivities = (req, res, next) => {
             const sightsSearchResults = await getSightsRecommendations(cityDetails, type, radius);
 
             const searchContinuationId = await storeSightsRecommendations(sightsSearchResults);
+
+            let photo;
+            for(const sight of sightsSearchResults) {
+                if(sight.photos) {
+                    photo = sight.photos[0];
+                }
+                else {
+                    photo = null;
+                }
+                const placeId = sight.place_id;
+                await getPlacePhoto(photo, placeId);
+            }
 
             res.status(201).json({
                 message: 'Sightseeing results retrieved successfully!',
@@ -646,6 +709,7 @@ exports.getSightSeeingActivities = (req, res, next) => {
 
         } 
         catch (error) {
+            console.log(error);
             error.message = 'Error retrieving sightseeing search results. Please try again!';
             error.errorCode = 'internal_server_err';
             return next(error);
@@ -731,46 +795,6 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             console.log('Error in retrieving place additional details from Google Places API: ', error);
             error.message = "Error in retrieving place additional details from Google Places API";
             error.errorCode = "api_response_err";
-            throw error;
-        }
-    }
-
-    //Function to get sightseeing place's primary photo and save it locally
-    async function getPlacePhoto(placeDetails) {
-        try {
-            const directory = path.join(__dirname, `../images/${placeDetails.place_id}`);
-
-            //Check if directory of that place exists 
-            if (!fs.existsSync(directory)) {
-                fs.mkdirSync(directory);
-
-                const primary_photo_reference = placeDetails.photos[0].photo_reference;
-                const placePrimaryPhoto = await axios.get(
-                    `https://maps.googleapis.com/maps/api/place/photo?maxheight=400&maxwidth=500&photo_reference=${primary_photo_reference}&key=${places_nearbysearch_api}`,
-                    { responseType: 'stream' }
-                ); 
-
-                const fileName = `primary.jpg`;
-                const filePath = path.join(__dirname, `../images/${placeDetails.place_id}`, fileName);
-                
-                // Create a writable stream to save the photo
-                const writer = fs.createWriteStream(filePath);
-
-                // Pipe the photo stream to the writable stream
-                placePrimaryPhoto.data.pipe(writer);
-
-                // Return a promise to indicate when the photo is saved successfully
-                return new Promise((resolve, reject) => {
-                    writer.on('finish', resolve);
-                    writer.on('error', reject);
-                });
-            }
-
-        }
-        catch(error) {
-            console.log('Error in retrieving place primary photo from Google Places API: ', error);
-            error.message = 'Error in retrieving place primary photo from Google Places API';
-            error.errorCode = 'api_response_err';
             throw error;
         }
     }
@@ -903,8 +927,6 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const placeAdditionalDetails = await getPlaceAdditionalDetails(placeId);
 
             const photoInfo = await ImageMetadata.findOne({name:placeId});
-            
-            await getPlacePhoto(placeDetails, placeAdditionalDetails);
 
             //Check the amount of photos available in places additional details object
             const noOfPhotos = placeAdditionalDetails.photos.length;
