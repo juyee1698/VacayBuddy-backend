@@ -14,6 +14,10 @@ const BookingType = require('../models/bookingType');
 const Payment = require('../models/payments');
 const Currency = require('../models/currency');
 const FileType = import('file-type');
+const Log = require('../models/log');
+const LogDetail = require('../models/logDetail');
+const EventType = require('../models/eventType');
+const EventParameter = require('../models/eventParameter');
 const ImageMetadata = require('../models/imageMetadata');
 
 const CryptoJS = require('crypto-js');
@@ -22,6 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const { ConnectionStates } = require('mongoose');
+const eventParameter = require('../models/eventParameter');
 const stockPhotoPath = './images/stock_photo.jpg';
 
 var amadeus = new Amadeus({
@@ -479,7 +484,6 @@ exports.getCityMetadata = (req, res, next) => {
         }
     }
 
-
     (async () => {
         try {
             const cityMetadata = await getCityData();
@@ -501,7 +505,8 @@ exports.getCityMetadata = (req, res, next) => {
 //Controller function to get sightseeing search results based on city
 exports.getSightSeeingActivities = (req, res, next) => {
     const city = req.body.city;
-    const state = req.body.state;
+    //const state = req.body.state;
+    const country = req.body.country;
     const countryCode = req.body.countryCode;
     const iataCode = req.body.iataCode;
     const type = req.body.type;
@@ -679,6 +684,55 @@ exports.getSightSeeingActivities = (req, res, next) => {
         }
     }
 
+    async function storeLogs() {
+        try {
+            const eventType = await EventType.findOne({eventTemplate:'sightseeing_search'});
+            const eventTypeId = eventType._id;
+
+            let now = Date.now();
+
+            const log = new Log({
+                userId: req.userId,
+                eventTypeId: eventTypeId,
+                logTime: now.toString()
+            });
+
+            log.save();
+
+            return log._id;
+        }
+        catch(error) {
+            console.log('Error in storing user log: ', error);
+            error.message = 'Error in storing user log';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    async function storeLogDetails(logId, iataCode) {
+        try {
+            const cityMetadata = await CityMetadata.findOne({iataCode: iataCode});
+            const cityMetadataId = cityMetadata._id;
+
+            const cityMetadataEventParameter = await EventParameter.findOne({attribute:'cityMetadataId'});
+            const cityMetadataEventParameterId = cityMetadataEventParameter._id;
+
+            const cityLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: cityMetadataEventParameterId,
+                value: cityMetadataId
+            });
+            cityLogDetail.save();
+
+        }
+        catch(error) {
+            console.log('Error in storing log details: ', error);
+            error.message = 'Error in storing log details';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
     //Immediately invoked function expression - run all the above modular functions
     (async () => {
         try {
@@ -699,6 +753,10 @@ exports.getSightSeeingActivities = (req, res, next) => {
                 const placeId = sight.place_id;
                 await getPlacePhoto(photo, placeId);
             }
+
+            const logId = await storeLogs();
+
+            await storeLogDetails(logId, iataCode);
 
             res.status(201).json({
                 message: 'Sightseeing results retrieved successfully!',
