@@ -17,9 +17,6 @@ app.use(session({
     saveUninitialized: true
 }));
 
-// Initialize Passport and restore authentication state if available
-
-
 const fileStorage = multer.diskStorage({
     destination: (req,file,cb) => {
         cb(null,'images')
@@ -38,13 +35,11 @@ const fileFilter = (req,file,cb) => {
     }
 };
 
-
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
 const searchRoutes = require('./routes/search');
 const authRoutes = require('./routes/auth');
 const o2authRoutes = require('./routes/o2auth_google')
-
 
 app.use(bodyParser.json());
 app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
@@ -57,9 +52,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
 app.use(express.static(path.join(__dirname,'public')));
-//app.use('/images',express.static(path.join(__dirname,'images')));
 
 app.use('/admin',adminRoutes);
 app.use('/auth', authRoutes);
