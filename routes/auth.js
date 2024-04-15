@@ -4,13 +4,6 @@ const router = express.Router();
 const authController = require('../controllers/auth');
 const { check,body } = require('express-validator');
 const User = require('../models/user');
-// const notAuth = require('../middleware/not-auth');
-
-// router.get('/login',notAuth,authController.getLogin);
-
-// router.get('/signup', notAuth,authController.getSignup);
-
-// router.post('/signup',authController.postSignup);
 router.post('/signup',
     [
     check('email')

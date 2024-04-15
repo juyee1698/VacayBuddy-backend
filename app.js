@@ -8,8 +8,6 @@ const csrf = require('csurf');
 const flash = require('connect-flash');
 const multer = require('multer');
 const redis = require('redis');
-const passport = require('passport');
-const cookieSession = require('cookie-session');
 const app = express();
 const session = require( 'express-session');
 
@@ -18,11 +16,6 @@ app.use(session({
     resave: false,
     saveUninitialized: true
 }));
-
-// Initialize Passport and restore authentication state if available
-app.use(passport.initialize());
-app.use(passport.session());
-
 
 const fileStorage = multer.diskStorage({
     destination: (req,file,cb) => {
@@ -42,13 +35,11 @@ const fileFilter = (req,file,cb) => {
     }
 };
 
-
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
 const searchRoutes = require('./routes/search');
 const authRoutes = require('./routes/auth');
-const o2authRoutes = require('./routes/oauth2')
-
+const o2authRoutes = require('./routes/o2auth_google')
 
 app.use(bodyParser.json());
 app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
@@ -61,9 +52,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
 app.use(express.static(path.join(__dirname,'public')));
-//app.use('/images',express.static(path.join(__dirname,'images')));
 
 app.use('/admin',adminRoutes);
 app.use('/auth', authRoutes);
@@ -82,7 +71,7 @@ app.use((error, req, res, next) => {
 mongoose.connect(process.env.mongoose_connect)
 .then(result => {
     console.log('Connected');
-    app.listen(8080);
+    app.listen(process.env.PORT || 8080)
 })
 .catch(err => {
     console.log(err);
