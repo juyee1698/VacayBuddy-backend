@@ -1,8 +1,8 @@
 Logs to track
 
-user_login
-flight_search
-flight_book
+user_login - userId
+flight_search - userId, originAirport, destinationAirport
+flight_booking - userId, bookingId
 sightseeing_search - userId, cityMetadataId (city, country, countryCode, iataCode)
-sightseeing_detailed_search - userId, placeId, placeName, cityMetadataId
+place_detailed_search - userId, placeId, placeName, cityMetadataId, address
 add_itinerary

@@ -273,10 +273,76 @@ exports.getFlights = (req, res, next) => {
         }
     }
 
+    async function storeLogs() {
+        try {
+            const eventType = await EventType.findOne({eventTemplate:'flight_search'});
+            const eventTypeId = eventType._id;
+
+            let now = Date.now();
+
+            const log = new Log({
+                userId: req.userId,
+                eventTypeId: eventTypeId,
+                logTime: now.toString()
+            });
+
+            log.save();
+
+            return log._id;
+        }
+        catch(error) {
+            console.log('Error in storing user flight search logs: ', error);
+            error.message = 'Error in storing user flight search logs';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    async function storeLogDetails(logId, originLocation, destinationLocation) {
+        try {
+            const originAirportMetadata = await Airport.findOne({iataCode: originLocation});
+            const originAirportMetadataId = originAirportMetadata._id;
+
+            const originAirportMetadataEventParameter = await EventParameter.findOne({attribute:'originAirport'});
+            const originAirportMetadataEventParameterId = originAirportMetadataEventParameter._id;
+
+            const originAirportLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: originAirportMetadataEventParameterId,
+                value: originAirportMetadataId.toString()
+            });
+            originAirportLogDetail.save();
+
+            const destinationAirportMetadata = await Airport.findOne({iataCode: destinationLocation});
+            const destinationAirportMetadataId = destinationAirportMetadata._id;
+
+            const destinationAirportMetadataEventParameter = await EventParameter.findOne({attribute:'destinationAirport'});
+            const destinationAirportMetadataEventParameterId = destinationAirportMetadataEventParameter._id;
+
+            const destinationAirportLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: destinationAirportMetadataEventParameterId,
+                value: destinationAirportMetadataId.toString()
+            });
+            destinationAirportLogDetail.save();
+
+        }
+        catch(error) {
+            console.log('Error in storing log details: ', error);
+            error.message = 'Error in storing log details';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
     (async () => {
         try {
             const flights = await processFlightOffers();
             await storeFlightResults(flights);
+
+            //Store flight search activity logs
+            const logId = await storeLogs();
+            storeLogDetails(logId, flights.originLocation, flights.destinationLocation)
 
             res.status(201).json({
                 message: 'Flight results retrieved successfully!',
@@ -720,7 +786,7 @@ exports.getSightSeeingActivities = (req, res, next) => {
             const cityLogDetail = new LogDetail({
                 logId: logId,
                 eventParameterId: cityMetadataEventParameterId,
-                value: cityMetadataId
+                value: cityMetadataId.toString()
             });
             cityLogDetail.save();
 
@@ -975,6 +1041,71 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         }
     }
 
+    async function storeLogs() {
+        try {
+            const eventType = await EventType.findOne({eventTemplate:'place_detailed_search'});
+            const eventTypeId = eventType._id;
+            let now = Date.now();
+
+            const log = new Log({
+                userId: req.userId,
+                eventTypeId: eventTypeId,
+                logTime: now.toString()
+            });
+            log.save();
+
+            return log._id;
+        }
+        catch(error) {
+            console.log('Error in storing user logs: ', error);
+            error.message = 'Error in storing user logs';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    async function storeLogDetails(logId, placeFullDetails) {
+        try {
+            const placeMetadataEventParameter = await EventParameter.findOne({attribute:'placeId'});
+            const placeMetadataEventParameterId = placeMetadataEventParameter._id;
+
+            const placeLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: placeMetadataEventParameterId,
+                value: placeFullDetails.place_id
+            });
+            placeLogDetail.save();
+
+            const placeNameEventParameter = await EventParameter.findOne({attribute:'placeName'});
+            const placeNameEventParameterId = placeNameEventParameter._id;
+
+            const placeNameLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: placeNameEventParameterId,
+                value: placeFullDetails.name
+            });
+            placeNameLogDetail.save();
+
+            const placeAddressEventParameter = await EventParameter.findOne({attribute:'placeAddress'});
+            const placeAddressEventParameterId = placeAddressEventParameter._id;
+
+            const placeAddressLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: placeAddressEventParameterId,
+                value: placeFullDetails.formatted_address
+            });
+            placeAddressLogDetail.save();
+
+        }
+        catch(error) {
+            console.log('Error in storing log details: ', error);
+            error.message = 'Error in storing log details';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+
     //Immediately invoked function expression - run all the above modular functions
     (async () => {
         try {
@@ -1007,6 +1138,10 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const response = await storeSightseeingDetails(placeDetails, placeAdditionalDetails);
             const detailedSearchContinuationId = response.encrypted.toString();
             const placeFullDetails = response.placeFullDetails;
+
+            const logId = await storeLogs();
+
+            await storeLogDetails(logId, placeFullDetails);
 
             res.status(201).json({
                 message: 'Sightseeing detailed information retrieved successfully!',
