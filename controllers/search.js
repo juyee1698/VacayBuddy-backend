@@ -19,6 +19,8 @@ const LogDetail = require('../models/logDetail');
 const EventType = require('../models/eventType');
 const EventParameter = require('../models/eventParameter');
 const ImageMetadata = require('../models/imageMetadata');
+const Review = require('../models/review');
+const Rating = require('../models/rating');
 
 const CryptoJS = require('crypto-js');
 const { decrypt } = require('dotenv');
@@ -26,7 +28,6 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const { ConnectionStates } = require('mongoose');
-const eventParameter = require('../models/eventParameter');
 const stockPhotoPath = './images/stock_photo.jpg';
 
 var amadeus = new Amadeus({
@@ -1041,6 +1042,65 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         }
     }
 
+    //Get place accumulated average rating
+    async function getRatings() {
+        try {
+            const placeRatings = await Rating.find({placeId: placeId});
+
+            let accumulatedRating;
+            let count;
+            let avgRating;
+
+            if(placeRatings.length>0) {
+                placeRatings.forEach(rating => {
+                    accumulatedRating+=rating;
+                    count+=1;
+                });
+    
+                avgRating = accumulatedRating/count;
+    
+                return avgRating;
+            }
+            else {
+                return 0;
+            }
+        }
+        catch(error) {
+            console.log('Error retrieving place ratings: ',error);
+            error.message = 'Error retrieving place ratings';
+            error.errorCode = 'redis_err';
+            throw error;
+        }
+    }
+
+    //Get place reviews
+    async function getReviews() {
+        try {
+            const placeReviews = await Review.find({placeId: placeId});
+
+            if(placeReviews) {
+                const formattedReviews = placeReviews.map(review => {
+                    return {
+                        rating: review.rating,
+                        summary: review.summary,
+                        review: review.review
+                    };
+                });
+    
+                return formattedReviews;
+            }
+            else {
+                return null;
+            }
+        }
+        catch(error) {
+            console.log('Error retrieving place ratings: ',error);
+            error.message = 'Error retrieving place ratings';
+            error.errorCode = 'redis_err';
+            throw error;
+        }
+    }
+
     async function storeLogs() {
         try {
             const eventType = await EventType.findOne({eventTemplate:'place_detailed_search'});
@@ -1139,6 +1199,10 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const detailedSearchContinuationId = response.encrypted.toString();
             const placeFullDetails = response.placeFullDetails;
 
+            const placeAvgRating = await getRatings();
+
+            const placeReviews = await getReviews();
+
             const logId = await storeLogs();
 
             await storeLogDetails(logId, placeFullDetails);
@@ -1147,7 +1211,9 @@ exports.selectSightSeeingActivity = (req, res, next) => {
                 message: 'Sightseeing detailed information retrieved successfully!',
                 detailedSearchContinuationId: detailedSearchContinuationId,
                 searchContinuationId: searchContinuationId,
-                placeFullDetails: placeFullDetails
+                placeFullDetails: placeFullDetails,
+                placeAvgRating: placeAvgRating,
+                placeReviews: placeReviews
             });
 
         } catch (error) {

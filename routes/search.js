@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 
 const bookingController = require('../controllers/booking');
 const searchController = require('../controllers/search');
+const userController = require('../controllers/user');
 const isAuth = require('../middleware/is-auth');
 
 const router = express.Router();
@@ -63,8 +64,10 @@ router.post('/flightSearch/selectFlight',
 //Get airport metadata 
 router.post('/airportMetadata', searchController.getAirportMetadata);
 
+//Get city metadata
 router.post('/cityMetadata', searchController.getCityMetadata);
 
+//Getting sightseeing recommendations in tourist destination
 router.post('/sightSearch',
     [
         body('city')
@@ -75,6 +78,10 @@ router.post('/sightSearch',
         .notEmpty().withMessage('Country code cannot be empty')
         .isString().withMessage('Invalid input, country code should be a valid string')
         .isLength({min: 2, max: 2}).withMessage('Invalid input, country code should be only 2 characters'),
+        body('country')
+        .notEmpty().withMessage('Country cannot be empty')
+        .isString().withMessage('Invalid input, country should be a valid string')
+        .isLength({min: 1, max: 50}).withMessage('Invalid input, country should be between 1 and 50 characters'),
         body('iataCode')
         .notEmpty().withMessage('IATA code cannot be empty')
         .isString().withMessage('Invalid input, IATA code should be a valid string')
@@ -87,6 +94,7 @@ router.post('/sightSearch',
     isAuth, 
     searchController.getSightSeeingActivities);
 
+//Get detailed information of a sightseeing spot
 router.post('/sightSearch/selectSight',
     [
         body('searchContinuationId', 'Search continuation ID should not be empty').not().isEmpty(),
@@ -94,5 +102,35 @@ router.post('/sightSearch/selectSight',
     ],
     isAuth, 
     searchController.selectSightSeeingActivity);
+
+//Add rating to a sightseeing spot
+router.post('/sightSearch/selectSight/addRating',
+    [
+        body('placeId', 'Place ID should not be empty').not().isEmpty(),
+        body('rating')
+        .notEmpty().withMessage('Rating should not be empty')
+        .isNumeric().withMessage('Invalid input, rating should be a number')
+    ],
+    isAuth, 
+    userController.postRating);
+
+//Add review to a sightseeing spot
+router.post('/sightSearch/selectSight/addReview',
+    [
+        body('placeId', 'Place ID should not be empty').not().isEmpty(),
+        body('rating')
+        .notEmpty().withMessage('Rating should not be empty')
+        .isNumeric().withMessage('Invalid input, rating should be a number'),
+        body('summary')
+        .notEmpty().withMessage('Summary should not be empty')
+        .isString().withMessage('Invalid input, summary should be a valid string')
+        .isLength({min: 5, max: 20}).withMessage('Invalid input, summary should be a minimum of 5 characters and maximum of 20 characters'),
+        body('review')
+        .notEmpty().withMessage('Review should not be empty')
+        .isString().withMessage('Invalid input, summary should be a valid string')
+        .isLength({min: 5, max: 100}).withMessage('Invalid input, summary should be a minimum of 5 characters and maximum of 100 characters')
+    ],
+    isAuth, 
+    userController.postReview);
 
 module.exports = router; 
