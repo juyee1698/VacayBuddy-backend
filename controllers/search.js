@@ -1059,10 +1059,16 @@ exports.selectSightSeeingActivity = (req, res, next) => {
     
                 avgRating = accumulatedRating/count;
     
-                return avgRating;
+                return {
+                    avgRating: avgRating,
+                    countRatings: placeRatings.length
+                };
             }
             else {
-                return 0;
+                return {
+                    avgRating: 0,
+                    countRatings: placeRatings.length
+                };
             }
         }
         catch(error) {
@@ -1199,7 +1205,10 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const detailedSearchContinuationId = response.encrypted.toString();
             const placeFullDetails = response.placeFullDetails;
 
-            const placeAvgRating = await getRatings();
+            const placeRatingsInfo = await getRatings();
+
+            const placeAvgRating = placeRatingsInfo.avgRating;
+            const placeTotalRatingsCount = placeRatingsInfo.countRatings;
 
             const placeReviews = await getReviews();
 
@@ -1213,6 +1222,7 @@ exports.selectSightSeeingActivity = (req, res, next) => {
                 searchContinuationId: searchContinuationId,
                 placeFullDetails: placeFullDetails,
                 placeAvgRating: placeAvgRating,
+                placeTotalRatingsCount: placeTotalRatingsCount,
                 placeReviews: placeReviews
             });
 
