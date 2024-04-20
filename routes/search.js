@@ -4,7 +4,6 @@ const rootDir = require('../util/path');
 const { check,body, query } = require('express-validator');
 const bodyParser = require('body-parser');
 
-const bookingController = require('../controllers/booking');
 const searchController = require('../controllers/search');
 const userController = require('../controllers/user');
 const isAuth = require('../middleware/is-auth');
@@ -97,11 +96,19 @@ router.post('/sightSearch',
 //Get detailed information of a sightseeing spot
 router.post('/sightSearch/selectSight',
     [
-        body('searchContinuationId', 'Search continuation ID should not be empty').not().isEmpty(),
-        body('placeId', 'Place ID should not be empty').not().isEmpty(),
+        // body('searchContinuationId', 'Search continuation ID should not be empty').not().isEmpty(),
+        body('placeId', 'Place ID should not be empty').not().isEmpty()
     ],
     isAuth, 
     searchController.selectSightSeeingActivity);
+
+//Get detailed information of a sightseeing spot without search continuation ID
+// router.post('/selectSight',
+//     [
+//         body('placeId', 'Place ID should not be empty').not().isEmpty(),
+//     ],
+//     isAuth, 
+//     searchController.selectSightSeeingActivity);
 
 //Add rating to a sightseeing spot
 router.post('/sightSearch/selectSight/addRating',

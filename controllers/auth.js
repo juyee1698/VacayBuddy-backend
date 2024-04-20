@@ -196,7 +196,19 @@ exports.login = (req, res, next) => {
                     destinationAirportMetadata: destinationAirportMetadata
                 });
             };
-            return formattedFlightSearchLogs;
+
+            //Remove duplicate entries
+            const uniqueIds = new Set();
+            let combinedStr;
+            const result = [];
+            for (const log of formattedFlightSearchLogs) {
+                combinedStr = log.originAirportMetadata._id.toString() + '_' + log.destinationAirportMetadata._id.toString();
+                if (!uniqueIds.has(combinedStr)) {
+                    uniqueIds.add(combinedStr);
+                    result.push(log);
+                }
+            }
+            return result;
 
         }
         catch(error) {
@@ -277,7 +289,18 @@ exports.login = (req, res, next) => {
                     cityInfo: cityInfo
                 });
             };
-            return formattedSightLogs;
+            
+            //Remove duplicate entries
+            const uniqueIds = new Set();
+            const result = [];
+            for (const log of formattedSightLogs) {
+                if (!uniqueIds.has(log.cityInfo._id.toString())) {
+                    uniqueIds.add(log.cityInfo._id.toString());
+                    result.push(log);
+                }
+            }
+
+            return result;
         }
         catch(error) {
             console.log('Error in retrieving user sightseeing search logs: ', error);
@@ -323,7 +346,16 @@ exports.login = (req, res, next) => {
                     placePhotoPath: 'images/'+ placeId
                 });
             };
-            return formattedPlaceLogs;
+            //Remove duplicate entries
+            const uniqueIds = new Set();
+            const result = [];
+            for (const log of formattedPlaceLogs) {
+                if (!uniqueIds.has(log.placeId)) {
+                    uniqueIds.add(log.placeId);
+                    result.push(log);
+                }
+            }
+            return result;
         }
         catch(error) {
             console.log('Error in retrieving place detailed search logs: ', error);

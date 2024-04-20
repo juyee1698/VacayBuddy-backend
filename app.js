@@ -39,7 +39,8 @@ const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/booking');
 const searchRoutes = require('./routes/search');
 const authRoutes = require('./routes/auth');
-const o2authRoutes = require('./routes/o2auth_google')
+const o2authRoutes = require('./routes/o2auth_google');
+const userRoutes = require('./routes/user');
 
 app.use(bodyParser.json());
 app.use(multer({storage:fileStorage,fileFilter:fileFilter}).single('image'));
@@ -59,6 +60,7 @@ app.use('/auth', authRoutes);
 app.use(bookingRoutes);
 app.use(searchRoutes);
 app.use('/o2auth', o2authRoutes);
+app.use('/user', userRoutes);
 
 app.use((error, req, res, next) => {
     const status = error.statusCode || 500;

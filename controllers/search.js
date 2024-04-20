@@ -835,8 +835,10 @@ exports.getSightSeeingActivities = (req, res, next) => {
         } 
         catch (error) {
             console.log(error);
-            error.message = 'Error retrieving sightseeing search results. Please try again!';
-            error.errorCode = 'internal_server_err';
+            if(!errorCode) {
+                error.message = 'Error retrieving sightseeing search results. Please try again!';
+                error.errorCode = 'internal_server_err';
+            }
             return next(error);
         }
     })();
@@ -893,6 +895,28 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const placeDetails = sightsSearchResults.find(sight => sight.place_id === placeId.toString());
 
             return placeDetails;
+        }
+        catch(error) {
+            if(error.errorCode === 'search_result_expiry') {
+                throw error;
+            }
+            else {
+                error.message = 'Error retrieving sightseeing search information from Redis';
+                error.errorCode = 'redis_err';
+                throw error;
+            }
+        }
+    }
+
+    async function getPlaceDetailsFromAPI(placeId) {
+        try {
+            
+             //Use the Google Place Details API
+             const placeAdditionalDetails = await axios.get(
+                `https://maps.googleapis.com/maps/api/place/details/json?fields=place_id%2Cname%2Crating%2Cbusiness_status%2Ccurrent_opening_hours%2Curl%2Cvicinity%2Cuser_ratings_total%2Creservable%2Ctypes&place_id=${placeId}&key=${places_nearbysearch_api}`
+            );
+
+            return placeAdditionalDetails.data.result;
         }
         catch(error) {
             if(error.errorCode === 'search_result_expiry') {
@@ -1047,17 +1071,16 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         try {
             const placeRatings = await Rating.find({placeId: placeId});
 
-            let accumulatedRating;
-            let count;
-            let avgRating;
+            let accumulatedRating = 0;
+            let count = 0;
+            let avgRating = 0;
 
             if(placeRatings.length>0) {
-                placeRatings.forEach(rating => {
-                    accumulatedRating+=rating;
+                placeRatings.forEach(ratingObj => {
+                    accumulatedRating+=parseInt(ratingObj.rating);
                     count+=1;
                 });
-    
-                avgRating = accumulatedRating/count;
+                avgRating = accumulatedRating/(placeRatings.length);
     
                 return {
                     avgRating: avgRating,
@@ -1074,7 +1097,7 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         catch(error) {
             console.log('Error retrieving place ratings: ',error);
             error.message = 'Error retrieving place ratings';
-            error.errorCode = 'redis_err';
+            error.errorCode = 'database_cud_err';
             throw error;
         }
     }
@@ -1102,6 +1125,34 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         catch(error) {
             console.log('Error retrieving place ratings: ',error);
             error.message = 'Error retrieving place ratings';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    async function getUserRating() {
+        try {
+            const userRating = await Rating.findOne({placeId: placeId, userId: userId});
+
+            return userRating;
+        }
+        catch(error) {
+            console.log('Error retrieving user rating for this place: ',error);
+            error.message = 'Error retrieving user rating for this place';
+            error.errorCode = 'redis_err';
+            throw error;
+        }
+    }
+
+    async function getUserReview() {
+        try {
+            const userReview = await Review.findOne({placeId: placeId, userId: userId});
+
+            return userReview;
+        }
+        catch(error) {
+            console.log('Error retrieving user review for this place: ',error);
+            error.message = 'Error retrieving user review for this place';
             error.errorCode = 'redis_err';
             throw error;
         }
@@ -1175,9 +1226,14 @@ exports.selectSightSeeingActivity = (req, res, next) => {
     //Immediately invoked function expression - run all the above modular functions
     (async () => {
         try {
-            const key = await getSightsSearchKey(searchContinuationId);
-
-            const placeDetails = await getPlaceDetails(key, placeId);
+            let placeDetails;
+            if(searchContinuationId) {
+                const key = await getSightsSearchKey(searchContinuationId);
+                placeDetails = await getPlaceDetails(key, placeId);
+            }
+            else {
+                placeDetails = await getPlaceDetailsFromAPI(placeId);
+            }
 
             const placeAdditionalDetails = await getPlaceAdditionalDetails(placeId);
 
@@ -1212,6 +1268,9 @@ exports.selectSightSeeingActivity = (req, res, next) => {
 
             const placeReviews = await getReviews();
 
+            const userRating = await getUserRating();
+            const userReview = await getUserReview();
+
             const logId = await storeLogs();
 
             await storeLogDetails(logId, placeFullDetails);
@@ -1223,12 +1282,17 @@ exports.selectSightSeeingActivity = (req, res, next) => {
                 placeFullDetails: placeFullDetails,
                 placeAvgRating: placeAvgRating,
                 placeTotalRatingsCount: placeTotalRatingsCount,
-                placeReviews: placeReviews
+                placeReviews: placeReviews,
+                userRating: userRating, 
+                userReview: userReview
             });
 
         } catch (error) {
-            error.message = 'Error retrieving sightseeing search results. Please try again!';
-            error.errorCode = 'internal_server_err';
+            console.log(error);
+            if(!error.errorCode){
+                error.message = 'Error retrieving sightseeing search results. Please try again!';
+                error.errorCode = 'internal_server_err';
+            }
             return next(error);
         }
     })();
