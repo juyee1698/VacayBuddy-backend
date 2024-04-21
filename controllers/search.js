@@ -1052,10 +1052,11 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             console.log('Sightseeing detailed information stored in Redis:', key);
 
             var encrypted = CryptoJS.AES.encrypt(key, "VacayBuddy Sightseeing Search");
-
+            var recommendation = await getRecommendations(key, placeFullDetails.types)
             return {
                 encrypted,
-                placeFullDetails
+                placeFullDetails,
+                recommendation
             }
 
         } catch (error) {
@@ -1222,9 +1223,18 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         }
     }
 
-    async function getRecommendations() {
+ async function getRecommendations(encrypted, type) {
         try {
-
+            const url = process.env.recommendation_url + '/get_recommendation'
+            const response = await axios.post(url, {
+                recommendation_id: encrypted,
+                type: type
+            });
+            if (response.status === 200) {
+                return response.data;
+            } else {
+                throw new Error('Unexpected status code: ' + response.status);
+            }
         }
         catch(error) {
             console.log('Error in getting similar recommendations for the sightseeing location: ', error);
@@ -1272,7 +1282,7 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const response = await storeSightseeingDetails(placeDetails, placeAdditionalDetails);
             const detailedSearchContinuationId = response.encrypted.toString();
             const placeFullDetails = response.placeFullDetails;
-
+            const recommendation = response.recommendation
             const placeRatingsInfo = await getRatings();
 
             const placeAvgRating = placeRatingsInfo.avgRating;
@@ -1296,7 +1306,8 @@ exports.selectSightSeeingActivity = (req, res, next) => {
                 placeTotalRatingsCount: placeTotalRatingsCount,
                 placeReviews: placeReviews,
                 userRating: userRating, 
-                userReview: userReview
+                userReview: userReview,
+                recommendation: recommendation
             });
 
         } catch (error) {
