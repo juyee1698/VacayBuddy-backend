@@ -809,17 +809,17 @@ exports.getSightSeeingActivities = (req, res, next) => {
 
             const searchContinuationId = await storeSightsRecommendations(sightsSearchResults);
 
-            let photo;
-            for(const sight of sightsSearchResults) {
-                if(sight.photos) {
-                    photo = sight.photos[0];
-                }
-                else {
-                    photo = null;
-                }
-                const placeId = sight.place_id;
-                await getPlacePhoto(photo, placeId);
-            }
+            // let photo;
+            // for(const sight of sightsSearchResults) {
+            //     if(sight.photos) {
+            //         photo = sight.photos[0];
+            //     }
+            //     else {
+            //         photo = null;
+            //     }
+            //     const placeId = sight.place_id;
+            //     await getPlacePhoto(photo, placeId);
+            // }
 
             const logId = await storeLogs();
 
@@ -1222,6 +1222,18 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         }
     }
 
+    async function getRecommendations() {
+        try {
+
+        }
+        catch(error) {
+            console.log('Error in getting similar recommendations for the sightseeing location: ', error);
+            error.message = 'Error in getting similar recommendations for the sightseeing location';
+            error.errorCode = 'internal_server_err';
+            throw error;
+        }
+    }
+
 
     //Immediately invoked function expression - run all the above modular functions
     (async () => {
@@ -1240,13 +1252,13 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const photoInfo = await ImageMetadata.findOne({name:placeId});
 
             //Check the amount of photos available in places additional details object
-            const noOfPhotos = placeAdditionalDetails.photos.length;
-            let rank = 0;
-            for(const photo of placeAdditionalDetails.photos) {
-                rank+=1;
-                await getPlaceAdditionalPhotos(photo, placeId, rank, noOfPhotos);
+            // const noOfPhotos = placeAdditionalDetails.photos.length;
+            // let rank = 0;
+            // for(const photo of placeAdditionalDetails.photos) {
+            //     rank+=1;
+            //     await getPlaceAdditionalPhotos(photo, placeId, rank, noOfPhotos);
 
-            }
+            // }
             //Reading in parallel
             // await Promise.all(placeAdditionalDetails.result.photos.map(async (photo) => {
             //     const contents = await fs.readFile(file, 'utf8')
