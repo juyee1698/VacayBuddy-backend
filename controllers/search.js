@@ -935,7 +935,7 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         try {
             //Use the Google Place Details API
             const placeAdditionalDetails = await axios.get(
-                `https://maps.googleapis.com/maps/api/place/details/json?fields=name%2Crating%2Cformatted_phone_number%2Cformatted_address%2Cphoto%2Ccurrent_opening_hours%2Curl%2Cvicinity%2Cuser_ratings_total%2Creservable&place_id=${placeId}&key=${places_nearbysearch_api}`
+                `https://maps.googleapis.com/maps/api/place/details/json?fields=name%2Cgeometry%2Crating%2Cformatted_phone_number%2Cformatted_address%2Cphoto%2Ccurrent_opening_hours%2Curl%2Cvicinity%2Cuser_ratings_total%2Creservable&place_id=${placeId}&key=${places_nearbysearch_api}`
             );
 
             return placeAdditionalDetails.data.result;
