@@ -14,7 +14,13 @@ const BookingType = require('../models/bookingType');
 const Payment = require('../models/payments');
 const Currency = require('../models/currency');
 const FileType = import('file-type');
+const Log = require('../models/log');
+const LogDetail = require('../models/logDetail');
+const EventType = require('../models/eventType');
+const EventParameter = require('../models/eventParameter');
 const ImageMetadata = require('../models/imageMetadata');
+const Review = require('../models/review');
+const Rating = require('../models/rating');
 
 const CryptoJS = require('crypto-js');
 const { decrypt } = require('dotenv');
@@ -268,10 +274,76 @@ exports.getFlights = (req, res, next) => {
         }
     }
 
+    async function storeLogs() {
+        try {
+            const eventType = await EventType.findOne({eventTemplate:'flight_search'});
+            const eventTypeId = eventType._id;
+
+            let now = Date.now();
+
+            const log = new Log({
+                userId: req.userId,
+                eventTypeId: eventTypeId,
+                logTime: now.toString()
+            });
+
+            log.save();
+
+            return log._id;
+        }
+        catch(error) {
+            console.log('Error in storing user flight search logs: ', error);
+            error.message = 'Error in storing user flight search logs';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    async function storeLogDetails(logId, originLocation, destinationLocation) {
+        try {
+            const originAirportMetadata = await Airport.findOne({iataCode: originLocation});
+            const originAirportMetadataId = originAirportMetadata._id;
+
+            const originAirportMetadataEventParameter = await EventParameter.findOne({attribute:'originAirport'});
+            const originAirportMetadataEventParameterId = originAirportMetadataEventParameter._id;
+
+            const originAirportLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: originAirportMetadataEventParameterId,
+                value: originAirportMetadataId.toString()
+            });
+            originAirportLogDetail.save();
+
+            const destinationAirportMetadata = await Airport.findOne({iataCode: destinationLocation});
+            const destinationAirportMetadataId = destinationAirportMetadata._id;
+
+            const destinationAirportMetadataEventParameter = await EventParameter.findOne({attribute:'destinationAirport'});
+            const destinationAirportMetadataEventParameterId = destinationAirportMetadataEventParameter._id;
+
+            const destinationAirportLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: destinationAirportMetadataEventParameterId,
+                value: destinationAirportMetadataId.toString()
+            });
+            destinationAirportLogDetail.save();
+
+        }
+        catch(error) {
+            console.log('Error in storing log details: ', error);
+            error.message = 'Error in storing log details';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
     (async () => {
         try {
             const flights = await processFlightOffers();
             await storeFlightResults(flights);
+
+            //Store flight search activity logs
+            const logId = await storeLogs();
+            storeLogDetails(logId, flights.originLocation, flights.destinationLocation)
 
             res.status(201).json({
                 message: 'Flight results retrieved successfully!',
@@ -479,7 +551,6 @@ exports.getCityMetadata = (req, res, next) => {
         }
     }
 
-
     (async () => {
         try {
             const cityMetadata = await getCityData();
@@ -501,7 +572,8 @@ exports.getCityMetadata = (req, res, next) => {
 //Controller function to get sightseeing search results based on city
 exports.getSightSeeingActivities = (req, res, next) => {
     const city = req.body.city;
-    const state = req.body.state;
+    //const state = req.body.state;
+    const country = req.body.country;
     const countryCode = req.body.countryCode;
     const iataCode = req.body.iataCode;
     const type = req.body.type;
@@ -679,6 +751,55 @@ exports.getSightSeeingActivities = (req, res, next) => {
         }
     }
 
+    async function storeLogs() {
+        try {
+            const eventType = await EventType.findOne({eventTemplate:'sightseeing_search'});
+            const eventTypeId = eventType._id;
+
+            let now = Date.now();
+
+            const log = new Log({
+                userId: req.userId,
+                eventTypeId: eventTypeId,
+                logTime: now.toString()
+            });
+
+            log.save();
+
+            return log._id;
+        }
+        catch(error) {
+            console.log('Error in storing user log: ', error);
+            error.message = 'Error in storing user log';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    async function storeLogDetails(logId, iataCode) {
+        try {
+            const cityMetadata = await CityMetadata.findOne({iataCode: iataCode});
+            const cityMetadataId = cityMetadata._id;
+
+            const cityMetadataEventParameter = await EventParameter.findOne({attribute:'cityMetadataId'});
+            const cityMetadataEventParameterId = cityMetadataEventParameter._id;
+
+            const cityLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: cityMetadataEventParameterId,
+                value: cityMetadataId.toString()
+            });
+            cityLogDetail.save();
+
+        }
+        catch(error) {
+            console.log('Error in storing log details: ', error);
+            error.message = 'Error in storing log details';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
     //Immediately invoked function expression - run all the above modular functions
     (async () => {
         try {
@@ -688,17 +809,21 @@ exports.getSightSeeingActivities = (req, res, next) => {
 
             const searchContinuationId = await storeSightsRecommendations(sightsSearchResults);
 
-            let photo;
-            for(const sight of sightsSearchResults) {
-                if(sight.photos) {
-                    photo = sight.photos[0];
-                }
-                else {
-                    photo = null;
-                }
-                const placeId = sight.place_id;
-                await getPlacePhoto(photo, placeId);
-            }
+            // let photo;
+            // for(const sight of sightsSearchResults) {
+            //     if(sight.photos) {
+            //         photo = sight.photos[0];
+            //     }
+            //     else {
+            //         photo = null;
+            //     }
+            //     const placeId = sight.place_id;
+            //     await getPlacePhoto(photo, placeId);
+            // }
+
+            const logId = await storeLogs();
+
+            await storeLogDetails(logId, iataCode);
 
             res.status(201).json({
                 message: 'Sightseeing results retrieved successfully!',
@@ -710,8 +835,10 @@ exports.getSightSeeingActivities = (req, res, next) => {
         } 
         catch (error) {
             console.log(error);
-            error.message = 'Error retrieving sightseeing search results. Please try again!';
-            error.errorCode = 'internal_server_err';
+            if(!errorCode) {
+                error.message = 'Error retrieving sightseeing search results. Please try again!';
+                error.errorCode = 'internal_server_err';
+            }
             return next(error);
         }
     })();
@@ -768,6 +895,28 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const placeDetails = sightsSearchResults.find(sight => sight.place_id === placeId.toString());
 
             return placeDetails;
+        }
+        catch(error) {
+            if(error.errorCode === 'search_result_expiry') {
+                throw error;
+            }
+            else {
+                error.message = 'Error retrieving sightseeing search information from Redis';
+                error.errorCode = 'redis_err';
+                throw error;
+            }
+        }
+    }
+
+    async function getPlaceDetailsFromAPI(placeId) {
+        try {
+            
+             //Use the Google Place Details API
+             const placeAdditionalDetails = await axios.get(
+                `https://maps.googleapis.com/maps/api/place/details/json?fields=place_id%2Cname%2Cgeometry%2Crating%2Cbusiness_status%2Ccurrent_opening_hours%2Curl%2Cvicinity%2Cuser_ratings_total%2Creservable%2Ctypes&place_id=${placeId}&key=${places_nearbysearch_api}`
+            );
+
+            return placeAdditionalDetails.data.result;
         }
         catch(error) {
             if(error.errorCode === 'search_result_expiry') {
@@ -903,10 +1052,11 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             console.log('Sightseeing detailed information stored in Redis:', key);
 
             var encrypted = CryptoJS.AES.encrypt(key, "VacayBuddy Sightseeing Search");
-
+            var recommendation = await getRecommendations(key, placeFullDetails.types)
             return {
                 encrypted,
-                placeFullDetails
+                placeFullDetails,
+                recommendation
             }
 
         } catch (error) {
@@ -917,25 +1067,226 @@ exports.selectSightSeeingActivity = (req, res, next) => {
         }
     }
 
+    //Get place accumulated average rating
+    async function getRatings() {
+        try {
+            const placeRatings = await Rating.find({placeId: placeId});
+
+            let accumulatedRating = 0;
+            let count = 0;
+            let avgRating = 0;
+
+            if(placeRatings.length>0) {
+                placeRatings.forEach(ratingObj => {
+                    accumulatedRating+=parseInt(ratingObj.rating);
+                    count+=1;
+                });
+                avgRating = accumulatedRating/(placeRatings.length);
+    
+                return {
+                    avgRating: avgRating,
+                    countRatings: placeRatings.length
+                };
+            }
+            else {
+                return {
+                    avgRating: 0,
+                    countRatings: placeRatings.length
+                };
+            }
+        }
+        catch(error) {
+            console.log('Error retrieving place ratings: ',error);
+            error.message = 'Error retrieving place ratings';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    //Get place reviews
+    async function getReviews() {
+        try {
+            const placeReviews = await Review.find({placeId: placeId});
+
+            if(placeReviews) {
+                const formattedReviews = placeReviews.map(review => {
+                    return {
+                        rating: review.rating,
+                        summary: review.summary,
+                        review: review.review
+                    };
+                });
+    
+                return formattedReviews;
+            }
+            else {
+                return null;
+            }
+        }
+        catch(error) {
+            console.log('Error retrieving place ratings: ',error);
+            error.message = 'Error retrieving place ratings';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    async function getUserRating() {
+        try {
+            const userRating = await Rating.findOne({placeId: placeId, userId: userId});
+
+            return userRating;
+        }
+        catch(error) {
+            console.log('Error retrieving user rating for this place: ',error);
+            error.message = 'Error retrieving user rating for this place';
+            error.errorCode = 'redis_err';
+            throw error;
+        }
+    }
+
+    async function getUserReview() {
+        try {
+            const userReview = await Review.findOne({placeId: placeId, userId: userId});
+
+            return userReview;
+        }
+        catch(error) {
+            console.log('Error retrieving user review for this place: ',error);
+            error.message = 'Error retrieving user review for this place';
+            error.errorCode = 'redis_err';
+            throw error;
+        }
+    }
+
+    async function storeLogs() {
+        try {
+            const eventType = await EventType.findOne({eventTemplate:'place_detailed_search'});
+            const eventTypeId = eventType._id;
+            let now = Date.now();
+
+            const log = new Log({
+                userId: req.userId,
+                eventTypeId: eventTypeId,
+                logTime: now.toString()
+            });
+            log.save();
+
+            return log._id;
+        }
+        catch(error) {
+            console.log('Error in storing user logs: ', error);
+            error.message = 'Error in storing user logs';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    async function storeLogDetails(logId, placeFullDetails) {
+        try {
+            const placeMetadataEventParameter = await EventParameter.findOne({attribute:'placeId'});
+            const placeMetadataEventParameterId = placeMetadataEventParameter._id;
+
+            const placeLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: placeMetadataEventParameterId,
+                value: placeFullDetails.place_id
+            });
+            placeLogDetail.save();
+
+            const placeNameEventParameter = await EventParameter.findOne({attribute:'placeName'});
+            const placeNameEventParameterId = placeNameEventParameter._id;
+
+            const placeNameLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: placeNameEventParameterId,
+                value: placeFullDetails.name
+            });
+            placeNameLogDetail.save();
+
+            const placeAddressEventParameter = await EventParameter.findOne({attribute:'placeAddress'});
+            const placeAddressEventParameterId = placeAddressEventParameter._id;
+
+            const placeAddressLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: placeAddressEventParameterId,
+                value: placeFullDetails.formatted_address
+            });
+            placeAddressLogDetail.save();
+
+            const placePhotoEventParameter = await EventParameter.findOne({attribute:'placePhotoReference'});
+            const placePhotoEventParameterId = placePhotoEventParameter._id;
+
+            let photo_ref;
+            if(placeFullDetails.photos) {
+                photo_ref = placeFullDetails.photos[0].photo_reference
+            }
+            else {
+                photo_ref = placeFullDetails.additionalPhotos[0].photo_reference
+            }
+
+            const placePhotoLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: placePhotoEventParameterId,
+                value: photo_ref
+            });
+            placePhotoLogDetail.save();
+
+        }
+        catch(error) {
+            console.log('Error in storing log details: ', error);
+            error.message = 'Error in storing log details';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+ async function getRecommendations(encrypted, type) {
+        try {
+            const url = process.env.recommendation_url + '/get_recommendation'
+            const response = await axios.post(url, {
+                recommendation_id: encrypted,
+                type: type
+            });
+            if (response.status === 200) {
+                return response.data;
+            } else {
+                throw new Error('Unexpected status code: ' + response.status);
+            }
+        }
+        catch(error) {
+            console.log('Error in getting similar recommendations for the sightseeing location: ', error);
+            error.message = 'Error in getting similar recommendations for the sightseeing location';
+            error.errorCode = 'internal_server_err';
+            throw error;
+        }
+    }
+
+
     //Immediately invoked function expression - run all the above modular functions
     (async () => {
         try {
-            const key = await getSightsSearchKey(searchContinuationId);
-
-            const placeDetails = await getPlaceDetails(key, placeId);
+            let placeDetails;
+            if(searchContinuationId) {
+                const key = await getSightsSearchKey(searchContinuationId);
+                placeDetails = await getPlaceDetails(key, placeId);
+            }
+            else {
+                placeDetails = await getPlaceDetailsFromAPI(placeId);
+            }
 
             const placeAdditionalDetails = await getPlaceAdditionalDetails(placeId);
 
             const photoInfo = await ImageMetadata.findOne({name:placeId});
 
             //Check the amount of photos available in places additional details object
-            const noOfPhotos = placeAdditionalDetails.photos.length;
-            let rank = 0;
-            for(const photo of placeAdditionalDetails.photos) {
-                rank+=1;
-                await getPlaceAdditionalPhotos(photo, placeId, rank, noOfPhotos);
+            // const noOfPhotos = placeAdditionalDetails.photos.length;
+            // let rank = 0;
+            // for(const photo of placeAdditionalDetails.photos) {
+            //     rank+=1;
+            //     await getPlaceAdditionalPhotos(photo, placeId, rank, noOfPhotos);
 
-            }
+            // }
             //Reading in parallel
             // await Promise.all(placeAdditionalDetails.result.photos.map(async (photo) => {
             //     const contents = await fs.readFile(file, 'utf8')
@@ -949,17 +1300,40 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const response = await storeSightseeingDetails(placeDetails, placeAdditionalDetails);
             const detailedSearchContinuationId = response.encrypted.toString();
             const placeFullDetails = response.placeFullDetails;
+            const recommendation = response.recommendation;
+            const placeRatingsInfo = await getRatings();
+
+            const placeAvgRating = placeRatingsInfo.avgRating;
+            const placeTotalRatingsCount = placeRatingsInfo.countRatings;
+
+            const placeReviews = await getReviews();
+
+            const userRating = await getUserRating();
+            const userReview = await getUserReview();
+
+            const logId = await storeLogs();
+
+            await storeLogDetails(logId, placeFullDetails);
 
             res.status(201).json({
                 message: 'Sightseeing detailed information retrieved successfully!',
                 detailedSearchContinuationId: detailedSearchContinuationId,
                 searchContinuationId: searchContinuationId,
-                placeFullDetails: placeFullDetails
+                placeFullDetails: placeFullDetails,
+                placeAvgRating: placeAvgRating,
+                placeTotalRatingsCount: placeTotalRatingsCount,
+                placeReviews: placeReviews,
+                userRating: userRating, 
+                userReview: userReview,
+                recommendation: recommendation
             });
 
         } catch (error) {
-            error.message = 'Error retrieving sightseeing search results. Please try again!';
-            error.errorCode = 'internal_server_err';
+            console.log(error);
+            if(!error.errorCode){
+                error.message = 'Error retrieving sightseeing search results. Please try again!';
+                error.errorCode = 'internal_server_err';
+            }
             return next(error);
         }
     })();

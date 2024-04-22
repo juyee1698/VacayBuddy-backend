@@ -1,0 +1,12 @@
+Logs to track
+
+user_login - userId
+flight_search - userId, originAirport, destinationAirport
+flight_booking - userId, bookingId
+sightseeing_search - userId, cityMetadataId (city, country, countryCode, iataCode)
+place_detailed_search - userId, placeId, placeName, cityMetadataId, address
+create_itinerary - userId
+add_itinerary - userId, itinerary_id, placeId
+edit_itinerary - userId, itinerary_id
+add_review - userId, placeId
+add_rating - userId, placeId

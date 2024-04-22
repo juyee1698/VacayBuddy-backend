@@ -10,6 +10,10 @@ const Booking = require('../models/booking');
 const BookingType = require('../models/bookingType');
 const Payment = require('../models/payments');
 const Currency = require('../models/currency');
+const Log = require('../models/log');
+const LogDetail = require('../models/logDetail');
+const EventType = require('../models/eventType');
+const EventParameter = require('../models/eventParameter');
 const nodemailer = require('nodemailer');
 const sendgridTransport = require('nodemailer-sendgrid-transport');
 
@@ -915,6 +919,61 @@ exports.postBookingFlight = (req, res, next) => {
         }
     }
 
+    async function storeLogs() {
+        try {
+            const eventType = await EventType.findOne({eventTemplate:'flight_booking'});
+            const eventTypeId = eventType._id;
+            let now = Date.now();
+
+            const log = new Log({
+                userId: req.userId,
+                eventTypeId: eventTypeId,
+                logTime: now.toString()
+            });
+            log.save();
+
+            return log._id;
+        }
+        catch(error) {
+            console.log('Error in storing user logs: ', error);
+            error.message = 'Error in storing user logs';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
+    async function storeLogDetails(logId, bookingId, paymentId) {
+        try {
+            const bookingMetadataEventParameter = await EventParameter.findOne({attribute:'bookingId'});
+            const bookingMetadataEventParameterId = bookingMetadataEventParameter._id;
+
+            const bookingLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: bookingMetadataEventParameterId,
+                value: bookingId.toString()
+            });
+            bookingLogDetail.save();
+
+            const paymentMetadataEventParameter = await EventParameter.findOne({attribute:'paymentId'});
+            const paymentMetadataEventParameterId = paymentMetadataEventParameter._id;
+
+            const paymentLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: paymentMetadataEventParameterId,
+                value: paymentId.toString()
+            });
+            paymentLogDetail.save();
+
+
+        }
+        catch(error) {
+            console.log('Error in storing flight booking log details: ', error);
+            error.message = 'Error in storing flight booking log details';
+            error.errorCode = 'database_cud_err';
+            throw error;
+        }
+    }
+
     //Immediately invoked function expression
     (async () => {
         try {
@@ -938,6 +997,10 @@ exports.postBookingFlight = (req, res, next) => {
             const bookingId = await storeBooking(flightBookingId, paymentId, userPaymentSession, flightBookingConfirmationInfo);
 
             await sendBookingEmailConfirmation(bookingId, flightBookingId, paymentId);
+
+            const logId = storeLogs();
+
+            await storeLogDetails(logId, bookingId, paymentId);
 
             res.status(201).json({
                 message: 'Flight Booking has been successfully completed. An email confirmation has been sent to your registered email address.',
