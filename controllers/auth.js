@@ -324,6 +324,7 @@ exports.login = (req, res, next) => {
                 let placeId;
                 let placeName;
                 let placeAddress;
+                let placePhotoReference;
                 for(const logDetail of logDetails) {
                     const eventParameter = await EventParameter.findOne({_id:logDetail.eventParameterId});
                     const eventParameterAttribute = eventParameter.attribute;
@@ -336,6 +337,9 @@ exports.login = (req, res, next) => {
                     if(eventParameterAttribute==='placeAddress') {
                         placeAddress = logDetail.value;
                     }
+                    if(eventParameterAttribute==='placePhotoReference') {
+                        placePhotoReference = logDetail.value;
+                    }
                 };
                 formattedPlaceLogs.push({
                     logId: log._id.toString(),
@@ -343,7 +347,8 @@ exports.login = (req, res, next) => {
                     placeId: placeId,
                     placeName: placeName,
                     placeAddress: placeAddress,
-                    placePhotoPath: 'images/'+ placeId
+                    placePhotoPath: 'images/'+ placeId,
+                    placePhotoReference: placePhotoReference
                 });
             };
             //Remove duplicate entries

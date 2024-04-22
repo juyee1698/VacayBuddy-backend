@@ -1214,6 +1214,16 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             });
             placeAddressLogDetail.save();
 
+            const placePhotoEventParameter = await EventParameter.findOne({attribute:'placePhotoReference'});
+            const placePhotoEventParameterId = placePhotoEventParameter._id;
+
+            const placePhotoLogDetail = new LogDetail({
+                logId: logId,
+                eventParameterId: placePhotoEventParameterId,
+                value: placeFullDetails.photos[0].photo_reference
+            });
+            placePhotoLogDetail.save();
+
         }
         catch(error) {
             console.log('Error in storing log details: ', error);
@@ -1282,7 +1292,7 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const response = await storeSightseeingDetails(placeDetails, placeAdditionalDetails);
             const detailedSearchContinuationId = response.encrypted.toString();
             const placeFullDetails = response.placeFullDetails;
-            const recommendation = response.recommendation
+            const recommendation = response.recommendation;
             const placeRatingsInfo = await getRatings();
 
             const placeAvgRating = placeRatingsInfo.avgRating;
