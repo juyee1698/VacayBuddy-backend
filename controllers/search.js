@@ -1217,10 +1217,18 @@ exports.selectSightSeeingActivity = (req, res, next) => {
             const placePhotoEventParameter = await EventParameter.findOne({attribute:'placePhotoReference'});
             const placePhotoEventParameterId = placePhotoEventParameter._id;
 
+            let photo_ref;
+            if(placeFullDetails.photos) {
+                photo_ref = placeFullDetails.photos[0].photo_reference
+            }
+            else {
+                photo_ref = placeFullDetails.additionalPhotos[0].photo_reference
+            }
+
             const placePhotoLogDetail = new LogDetail({
                 logId: logId,
                 eventParameterId: placePhotoEventParameterId,
-                value: placeFullDetails.photos[0].photo_reference
+                value: photo_ref
             });
             placePhotoLogDetail.save();
 
