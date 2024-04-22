@@ -71,6 +71,6 @@ router.post('/deleteItinerary',
     isAuth,
     userController.postDeleteItinerary);
 
-router.post('/getItineraries', isAuth, userController.getUserItineraries);
+router.get('/getItineraries', isAuth, userController.getUserItineraries);
 
 module.exports = router; 
