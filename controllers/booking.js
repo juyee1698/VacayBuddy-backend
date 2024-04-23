@@ -253,8 +253,8 @@ exports.postFlightCheckout = (req, res, next) => {
                     customerCountry: userBookingInfo.country
                 },
                 mode: 'payment',
-                success_url:'https://vacay-buddy-881f2b5b5272.herokuapp.com/bookingConfirmation',
-                cancel_url:'https://vacay-buddy-881f2b5b5272.herokuapp.com/bookingCancel'
+                success_url:process.env.frontend+'/bookingConfirmation',
+                cancel_url:process.env.frontend +'/bookingCancel'
             });
 
             return session;
@@ -571,13 +571,13 @@ exports.postBookingFlight = (req, res, next) => {
 
             const existingPayment = await Payment.findOne({stripeTransactionId:userBookingInfo.sessionId});
 
-            if(existingPayment) {
-                const error = new Error('Error in storing user payment information in database. The payment information already exists.');
-                error.errorCode = 'database_cud_err';
-                error.specificMessage = 'payment_duplicate';
-                throw error;
-            }
-            else {
+            // if(existingPayment) {
+            //     const error = new Error('Error in storing user payment information in database. The payment information already exists.');
+            //     error.errorCode = 'database_cud_err';
+            //     error.specificMessage = 'payment_duplicate';
+            //     throw error;
+            // }
+            // else {
                 const payment = new Payment({
                     userId: userId,
                     bookingTypeId: bookingTypeId,
@@ -593,7 +593,7 @@ exports.postBookingFlight = (req, res, next) => {
                 payment.save();
     
                 return payment._id;
-            }
+            // }
 
            }
         catch (error) {
@@ -998,7 +998,7 @@ exports.postBookingFlight = (req, res, next) => {
 
             await sendBookingEmailConfirmation(bookingId, flightBookingId, paymentId);
 
-            const logId = storeLogs();
+            const logId = await storeLogs();
 
             await storeLogDetails(logId, bookingId, paymentId);
 
